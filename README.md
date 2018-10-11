@@ -14,7 +14,8 @@ this will generate yourfile.root
 
 tpx3_clusters.cpp is used in the same way and will make a Root tree with cluster data.
 
-The data folder contains two example .tpx3 files. One with data from a quad detector (512x512) and one from TPX3cam (256x256) data.
+The data folder contains two example .tpx3 files. One with data from a quad detector (512x512) and one from TPX3cam (256x256) data
+with TDC events.
 
 
 ## author
