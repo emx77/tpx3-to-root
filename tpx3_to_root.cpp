@@ -97,6 +97,9 @@ int tpx3_to_root(string filename) {
       chipcount[i]=0;
       frame[i]=0;
     }
+
+    double tdc_time = -1;
+    int trigcnt = -1;
     
     while ((infi.good()) && count<nheaders) {
       if (count%10000==0) cout << "header: " << count << endl;
@@ -173,9 +176,9 @@ int tpx3_to_root(string filename) {
 	}
 	
 	int h2 = temp>>60;  
-	if (h2==0x6) { 
-	  cout << hex << temp << dec << endl;
-	
+	if (h2==0x6) {
+          trigcnt = (int) (temp>>44) & 0xfff;   
+
 	  long coarsetime = temp>>12 & 0xFFFFFFFF;
 	
 	  //cout << coarsetime*25e-9 << endl;
@@ -183,7 +186,12 @@ int tpx3_to_root(string filename) {
 	  tmpfine = ((tmpfine-1) << 9) / 12;     // subtract 1 (as fractions 0 to 11 are numbered 1 to 12), then shift by 9 positions to reduce the error coming from the integer division by 12 
 	  int trigtime_fine = (temp & 0x0000000000000E00) | (tmpfine & 0x00000000000001FF);   // combine the 3 bits with a size of 3.125 ns with the rest of the fine time from the 12 clock phases
 	  double time_unit=25./4096;
-	  cout << setprecision(15) << (coarsetime*25E-9 + trigtime_fine*time_unit*1E-9) << endl;
+          tdc_time = (coarsetime*25E-9 + trigtime_fine*time_unit*1E-9);
+          if (count<20) { 
+            cout << count << ' ' << trigcnt << ' ' << hex << temp << dec << endl; 
+	    cout << setprecision(15) <<  tdc_time << endl;
+          }
+          
         }
 	if (temp>>60==0xb && hitcount < maxhits) {
 	  if (hitcount%1000000==0) cout << "hit: " << hitcount << endl;
@@ -210,6 +218,11 @@ int tpx3_to_root(string filename) {
           FToA =  (UChar_t) ((temp >> 16) & 0xf);
 	  CToA = (ToA << 4) | (~FToA & 0xf);
 	  
+          if (hitcount%10000==0 || hitcount%10000==1) {
+            cout << "hitcount: " << hitcount << " pixel hit time " << spidrTime*409e-6+CToA*1.5625e-9 <<  endl;
+            cout << "tdc trig cnt: " << trigcnt << " last tdc event time: " << tdc_time << endl; 
+          }
+
 	  if (chipnr==0) {
             // h2c0->Fill(x,y);
 	    xpix=x+260;
