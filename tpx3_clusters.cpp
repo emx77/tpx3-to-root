@@ -29,7 +29,7 @@ int tpx3_clusters(string filename, long nhits=-1) {
    long nentries=t2->GetEntries();
    cout << "Number of root tree entries: " << nentries << endl;
    
-   const Int_t kMaxPixel=25; // maximum allowed cluster size
+   const Int_t kMaxPixel=100; // maximum allowed cluster size
    Int_t npix;
    Short_t xpix[kMaxPixel];
    Short_t ypix[kMaxPixel];
@@ -118,8 +118,8 @@ int tpx3_clusters(string filename, long nhits=-1) {
        //etot=0;
        //tmin=0x3ffff;
        for (int j=0; j<nsubset; j++) {
-	 //cout << j << endl; 
-         if (clusnr[j]==i) {
+         //cout << j << endl; 
+         if (clusnr[j]==i && npix < kMaxPixel) {
            xpix[npix]=(Short_t)(x[j]+0.5);
 	   ypix[npix]=(Short_t)(y[j]+0.5);
 	   tpix[npix]=(Int_t)(t[j]+0.5);
@@ -139,13 +139,12 @@ int tpx3_clusters(string filename, long nhits=-1) {
        //my = 0.5+my/npix;
 	 //cout << etot << endl << endl;
        //}
-       //cout << npix << endl;
        tcl->Fill();
      } // next cluster
    
    } // loop over all data subsets.
 
-   delete clusnr;
+   delete[] clusnr;
 
    cout << "processed " << nprocessed << " entries (" << 100.*nprocessed/nentries << "%)" << endl;
    
