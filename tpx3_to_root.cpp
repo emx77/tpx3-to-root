@@ -76,8 +76,12 @@ int tpx3_to_root(string filename) {
     const int dl=9000; // max length of data packet 
     unsigned long *databuffer = new unsigned long[dl];
 
-    int nheaders=10000000;
+    int nheaders= 10000000;
     int maxhits =2000000000;
+
+    unsigned long Timer_LSB32 = 0;
+    unsigned long Timer_MSB16 = 0;
+    unsigned long long int timemaster;
     
     // loop over the headers in the file
 
@@ -177,9 +181,29 @@ int tpx3_to_root(string filename) {
 	
 	int h2 = temp>>60;  
 	if (h2==0x6) {
+	  int h3 = temp>>56;
+          int tdc_nr=-1; // can be 1 or 2
+	  int edge_type=-1; // 0 for rising edge, 1 for falling edge	
+		
+          if (h3 == 0x6f) {
+	    tdc_nr=1;
+	    edge_type=0;		
+	  }
+          else if (h3 == 0x6a) {
+	    tdc_nr=1;
+	    edge_type=1;		
+	  }
+          else if (h3 == 0x6e) {
+	    tdc_nr=2;
+	    edge_type=0;		
+	  }
+          else if (h3 == 0x6b) {
+	    tdc_nr=2;
+	    edge_type=1;		
+	  } 	
           trigcnt = (int) (temp>>44) & 0xfff;   
 
-	  long coarsetime = temp>>12 & 0xFFFFFFFF;
+	  long coarsetime = temp>>12 & 0xFFFFFFFF;	
 	
 	  //cout << coarsetime*25e-9 << endl;
 	  int tmpfine = (temp >> 5 ) & 0xF;   // 12 phases of 320 MHz clock in bits 5 to 8
@@ -189,11 +213,37 @@ int tpx3_to_root(string filename) {
           tdc_time = (coarsetime*25E-9 + trigtime_fine*time_unit*1E-9);
           if (count<20) { 
             cout << count << ' ' << trigcnt << ' ' << hex << temp << dec << endl; 
-	    cout << setprecision(15) <<  tdc_time << endl;
+	    cout << "tdc_nr: " << tdc_nr << " edge_type: " << edge_type << " tdc_time: " << setprecision(15) <<  tdc_time << endl;
           }
           
         }
-	if (temp>>60==0xb && hitcount < maxhits) {
+        if (h2==0x4) { 
+
+          //cout << hex << temp << dec << endl;
+         
+          //spidr time is already decoded.
+
+	  if (((temp >> 56) & 0xF) == 0x4) {
+	    Timer_LSB32 = (temp >> 16) & 0xFFFFFFFF;
+          } 
+          else if (((temp >> 56) & 0xF) == 0x5) {
+	    Timer_MSB16 = (temp >> 16) & 0xFFFF;
+	    timemaster = Timer_MSB16;						
+	    timemaster = (timemaster << 32) & 0xFFFF00000000;
+	    timemaster = timemaster | Timer_LSB32;
+	    //todo: check for jumps for specific settings
+            //int diff = (spidrTime >> 14) - ((Timer_LSB32 >> 28) & 0x3);
+            //if ((spidrTime >> 14) == ((Timer_LSB32 >> 28) & 0x3)) { 
+	    //} 
+            //else { 
+            //  Timer_MSB16 = Timer_MSB16 - diff;
+            //}
+            cout << "Global time:  " << setprecision(15) << timemaster *25e-9 << endl; //converted Global timestamp
+	  }
+  	
+	}
+	 
+	if (h2==0xb && hitcount < maxhits) {
 	  if (hitcount%1000000==0) cout << "hit: " << hitcount << endl;
 	  hitcount++;
 	   
@@ -223,6 +273,24 @@ int tpx3_to_root(string filename) {
             cout << "tdc trig cnt: " << trigcnt << " last tdc event time: " << tdc_time << endl; 
           }
 
+           //todo: check for jumps for specific settings
+           //todo: align pixel hits with global time stamp 
+          //int diff = ( spidrTime >> 14 ) - ( (Timer_LSB32 >> 28) & 0x3 );
+          //if (diff!=0) {
+          //  cout << diff << ' ' << hex << ((Timer_LSB32 >> 28) & 0x3) << " " << (spidrTime>>14) << dec << endl;
+          //}
+	  //else {
+	  //	//cout << (timemaster >> 29)*13.4217728 +(spidrTime&0x7FFF)*409e-6 + CToA*1.5625e-9 << endl;
+          //}
+            //if ((spidrTime >> 14) == ((Timer_LSB32 >> 28) & 0x3)) { 
+	    //} 
+            //else { 
+            //  Timer_MSB16 = Timer_MSB16 - diff;
+            //}
+	  
+	  // pll setting: 30
+          //if (x>193&&x<206) {CToA=CToA-16;}
+	
 	  if (chipnr==0) {
             // h2c0->Fill(x,y);
 	    xpix=x+260;
