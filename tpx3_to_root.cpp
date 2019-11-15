@@ -1,5 +1,5 @@
 #include <iostream>
-#include  <iomanip>
+#include <iomanip>
 #include <fstream>
 
 #include "TROOT.h"
@@ -12,7 +12,7 @@
 
 using namespace std;
 
-int tpx3_to_root(string filename) {
+int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
   
   gROOT->Reset();
 
@@ -52,7 +52,7 @@ int tpx3_to_root(string filename) {
    UInt_t CToA;
 
    // todo: use correct types
-   
+
    t2->Branch("framenr",&framenr,"framenr/i");
    t2->Branch("chipnr",&chipnr,"chipnr/b");
    t2->Branch("xpix",&xpix,"xpix/s");
@@ -77,11 +77,12 @@ int tpx3_to_root(string filename) {
     unsigned long *databuffer = new unsigned long[dl];
 
     int nheaders= 10000000;
-    int maxhits =2000000000;
+    unsigned long maxhits =2000000000;
+    if (nrawpixelhits!=0) maxhits=nrawpixelhits;
 
     unsigned long Timer_LSB32 = 0;
     unsigned long Timer_MSB16 = 0;
-    unsigned long long int timemaster;
+    unsigned long long timemaster;
     
     // loop over the headers in the file
 
@@ -89,7 +90,7 @@ int tpx3_to_root(string filename) {
     long count=0;
 
     //number of pixel hits 
-    long hitcount=0;
+    unsigned long hitcount=0;
     
     // counts per chip
     long chipcount[4];
@@ -269,13 +270,16 @@ int tpx3_to_root(string filename) {
 	  CToA = (ToA << 4) | (~FToA & 0xf);
 	  
           if (hitcount%10000==0 || hitcount%10000==1) {
-            cout << "hitcount: " << hitcount << " pixel hit time " << spidrTime*409e-6+CToA*1.5625e-9 <<  endl;
-            cout << "tdc trig cnt: " << trigcnt << " last tdc event time: " << tdc_time << endl; 
+            cout << "hitcount: " << hitcount << " pixel hit time " << spidrTime*409.6e-6+CToA*1.5625e-9 <<  endl;
+             cout << " global pixel hit time " << (timemaster >> 30)*2*13.4217728 + spidrTime*409.6e-6 + CToA*1.5625e-9 << endl;
+            cout << " tdc trig cnt: " << trigcnt << " last tdc event time: " << tdc_time << endl; 
           }
 
            //todo: check for jumps for specific settings
-           //todo: align pixel hits with global time stamp 
-          //int diff = ( spidrTime >> 14 ) - ( (Timer_LSB32 >> 28) & 0x3 );
+
+           //todo: check alignment of pixel hits and tdc time stamps with global time stamp 
+        
+  //int diff = ( spidrTime >> 14 ) - ( (Timer_LSB32 >> 28) & 0x3 );
           //if (diff!=0) {
           //  cout << diff << ' ' << hex << ((Timer_LSB32 >> 28) & 0x3) << " " << (spidrTime>>14) << dec << endl;
           //}
@@ -287,10 +291,8 @@ int tpx3_to_root(string filename) {
             //else { 
             //  Timer_MSB16 = Timer_MSB16 - diff;
             //}
-	  
-	  // pll setting: 30
-          //if (x>193&&x<206) {CToA=CToA-16;}
-	
+
+          
 	  if (chipnr==0) {
             // h2c0->Fill(x,y);
 	    xpix=x+260;
