@@ -55,7 +55,7 @@ int tpx3_clusters(string filename, long nhits=-1) {
    //tcl->Branch("dtpix",dtpix,"dtpix/I");
    //tcl->Branch("dt",&dt,"dt/I");
       
-   int stepsize=16384;
+   int stepsize=32768;
    //int nsteps=(nentries/stepsize)+1;
    //nsteps=100;
    
@@ -71,8 +71,11 @@ int tpx3_clusters(string filename, long nhits=-1) {
      if ( (nhits-nprocessed)<stepsize ) {
        stepsize = nhits-nprocessed;
      }
+     
      // cout << "selecting tree data ... " << endl;
-     int nsubset = t2->Draw("ypix:xpix:CToA:ToT", "","goff", stepsize, nprocessed);
+     int nsubset = t2->Draw("xpix:ypix:SpidrTime*262144+(CToA-16):ToT", "","goff", stepsize, nprocessed);
+     //int nsubset = t2->Draw("xpix:ypix:CToA:ToT", "","goff", stepsize, nprocessed);
+    
      nprocessed+=nsubset;
      // cout << "number of entries in subset: " << nsubset << ' ' << istep << endl;
      
@@ -98,6 +101,7 @@ int tpx3_clusters(string filename, long nhits=-1) {
      for (int i=0; i<nsubset; i++) {
        if (clusnr[i]==-1) {
          clfind(i, clusid, nsubset, x, y, t, clusnr);
+         
          clusid++;
        }
      }
@@ -120,20 +124,20 @@ int tpx3_clusters(string filename, long nhits=-1) {
        for (int j=0; j<nsubset; j++) {
          //cout << j << endl; 
          if (clusnr[j]==i && npix < kMaxPixel) {
-           xpix[npix]=(Short_t)(x[j]+0.5);
-	   ypix[npix]=(Short_t)(y[j]+0.5);
-	   tpix[npix]=(Int_t)(t[j]+0.5);
-	   //if (tpix[npix]<tmin) {
-	   //tmin=tpix[npix];
-	   //}
-	   epix[npix]=(Short_t)(e[j]+0.5);
+            xpix[npix]=(Short_t)(x[j]+0.5);
+            ypix[npix]=(Short_t)(y[j]+0.5);
+            tpix[npix]=(Int_t)(t[j]+0.5);
+	       //if (tpix[npix]<tmin) {
+	       //tmin=tpix[npix];
+	       //}
+            epix[npix]=(Short_t)(e[j]+0.5);
            //cout << npix << ' ' << e[j] << ' ' << epix[npix] << endl;
 	   //mx+=xpix[npix];
 	   //my+=ypix[npix];
 	   //etot+=epix[npix];
-	   npix++;
-	 }
-       }
+            npix++;
+        }
+    }
        //if (npix!=0) {
        //mx = 0.5+mx/npix;
        //my = 0.5+my/npix;
@@ -147,6 +151,9 @@ int tpx3_clusters(string filename, long nhits=-1) {
    delete[] clusnr;
 
    cout << "processed " << nprocessed << " entries (" << 100.*nprocessed/nentries << "%)" << endl;
+   cout << "nr of found clusters " << tcl->GetEntries() << endl;
+   cout << "ToA of first hit (s): " << 1.5625e-9* tcl->GetMinimum("t") << endl;
+   cout << "ToA of last hit (s): "  << 1.5625e-9* tcl->GetMaximum("t") << endl;
    
    tcl->Write();
 
@@ -162,17 +169,21 @@ int tpx3_clusters(string filename, long nhits=-1) {
 // cluster finding function
 int clfind(int ihit, int clusid, int nsubset,
 	   double *x, double *y, double *t, int *clusnr) {
-  
-  clusnr[ihit]=clusid;
-
-  for (int i=0; i<nsubset; i++) {
-    if (clusnr[i]<0) {
-      if (  TMath::Abs(x[i]-x[ihit])<=1 &&  TMath::Abs(y[i]-y[ihit])<=1
-	    && TMath::Abs(t[i]-t[ihit])<=640 ) {
-	clfind(i,clusid,nsubset,x,y,t,clusnr);
-      }
+    clusnr[ihit]=clusid;
+    // for (int i=0; i<nsubset; i++) {
+    Double_t t0 = t[ihit];
+    int i=ihit+1;
+    while (t[i]-t[ihit]<1280 && i<nsubset) {
+        if (clusnr[i]<0) {
+            if (TMath::Abs(t[i]-t[ihit])<=640) {
+                if (  TMath::Abs(x[i]-x[ihit])<=1 &&  TMath::Abs(y[i]-y[ihit])<=1 ){
+                    clfind(i,clusid,nsubset,x,y,t,clusnr);
+                }
+            }
+            
+        }
+        i++;
     }
-  }
  
-  return 0;
+    return 0;
 }
