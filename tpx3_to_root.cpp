@@ -10,13 +10,24 @@
 #include "TFile.h"
 #include "TTree.h"
 
+#include "TMath.h"
+#include "TTimeStamp.h"
+
 using namespace std;
 
 int tpx3_to_root(string filename, unsigned long nrawpixelhits=0, unsigned first_frame=0) {
-
+    
     gROOT->Reset();
+    
+    TTimeStamp ts_start;
 
+    TTimeStamp ts_sort_start;
+   
+    TTimeStamp ts_sort_end;
+    
     int debug=0;
+    
+    int sort=0;
 
     TH1F *h1 = new TH1F("h1","erik",256,0,256);
 
@@ -26,7 +37,9 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0, unsigned first_
     //TH2F *h2c3 = new TH2F("h2c3","",256,0,256,256,0,256);
 
     TH1F *h11 = new TH1F("h11","",1125,0,1125);
-    TH1F *h12 = new TH1F("h12","dt",200,-100,100);
+    TH1F *h12 = new TH1F("h12","dt",2000,-1.5625e-3,1.5625e-3);
+    TH1F *h13 = new TH1F("h13","dt",3000,-2.0e-3,1.0e-3);
+    TH1F *h14 = new TH1F("h14","dt",3000,-2.0e-3,1.0e-3);
     
 
     TH2F *h2quad = new TH2F("h2quad","",516,0,516,516,0,516);
@@ -45,7 +58,6 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0, unsigned first_
     // cout << " number of raw pixel hits = " << nrawpixelhits << endl;
     cout << " first frame number = " << first_frame << endl;
 
-
     string ofile = filename.substr(0,filename.size()-4)+"root";
     cout << " output file = " << ofile << endl;
     
@@ -60,6 +72,10 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0, unsigned first_
     UInt_t CToA;
 
     // todo: use correct types
+    // todo: CToA is double information
+    // todo: store tdc stamps
+    // todo: check for roll over in data conversion
+    // todo: reduce hard coded values
 
     t2->Branch("framenr",&framenr,"framenr/i");
     t2->Branch("chipnr",&chipnr,"chipnr/b");
@@ -114,7 +130,11 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0, unsigned first_
 
         double tdc_time = -1;
         int trigcnt = -1;
-    
+        
+        Double_t t_min=TMath::Power(2,34);
+        Double_t t_max=0;
+        
+        Double_t t_prevhit = 0;
         while ((infi.good()) && count<nheaders) {
             if (count%10000==0) cout << "header: " << count << endl;
             count++;
@@ -155,17 +175,19 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0, unsigned first_
         
             infi.read((char*)databuffer,size);
             
-            UShort_t prev_time = 0;
+            //if (chipnr!=1) continue;
+            
+            //UShort_t prev_time = 0;
             
             for (int i=0; i<pixdatasize; i++) {
                 //cout << hex << ' ' << databuffer[i] << dec << ' ';
                 ULong64_t temp = databuffer[i];
 
                 spidrTime = (UShort_t) (temp & 0xffff);
-                if (i>0) {
-                   h12->Fill(spidrTime-prev_time);    
-                }
-                prev_time=spidrTime;
+                 //if (i>0) {
+                //   h12->Fill(spidrTime-prev_time);    
+                //}
+                // prev_time=spidrTime;
 
                 //cout << hex << (temp>>56) << dec << ' ';
     
@@ -284,12 +306,29 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0, unsigned first_
                     ToT  = (UShort_t) ((temp >> (16 + 4)) & 0x3ff);
                     FToA =  (UChar_t) ((temp >> 16) & 0xf);
                     CToA = (ToA << 4) | (~FToA & 0xf);
+                    
+                    Double_t t_hit = (Double_t)(409.6e-6)*spidrTime+(Double_t)(1.5625e-9)*((Int_t)CToA-15); 
+                    if (t_hit>t_max) t_max = t_hit;
+                    if (t_hit<t_min) t_min = t_hit;
+                    if (t_hit>7.0) {cout << "hc: " << hitcount << endl;}
                 
                     if (hitcount%10000==0 || hitcount%10000==1) {
-                        cout << "hitcount: " << hitcount << " pixel hit time " << spidrTime*409.6e-6+CToA*1.5625e-9 <<  endl;
-                        cout << " global pixel hit time " << setprecision(20) << (timemaster >> 30)*2*13.4217728 + spidrTime*409.6e-6 + CToA*1.5625e-9 << endl;
+                        
+                        
+                        cout << "hitcount: " << hitcount 
+                             << " pixel hit time " 
+                             << setprecision(12) 
+                             << t_hit << " " 
+                             << (spidrTime*262144+ToA*16-FToA) << endl;
+                        cout << " global pixel hit time " << setprecision(12) 
+                             << (timemaster >> 30)*2*13.4217728 + spidrTime*409.6e-6 + CToA*1.5625e-9 << endl;
                         cout << " tdc trig cnt: " << trigcnt << " last tdc event time: " << tdc_time << endl; 
                     }
+                    
+                    if (hitcount>1) {
+                        h12->Fill(t_hit-t_prevhit);    
+                    }
+                    t_prevhit = t_hit;
 
                     //todo: check for jumps for specific settings
 
@@ -342,6 +381,50 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0, unsigned first_
 
         cout << count << " data packets found " << endl;
         cout << hitcount << " pixel hits found " << endl;
+        
+        cout << "ToA of first hit (s): " << t_min << endl;
+        cout << "ToA of last hit (s): "  << t_max << endl;
+        if (t_max>t_min) {
+           cout << "pixelhits/s (MHz) : " << hitcount/(t_max-t_min)/1e6 << endl;
+        }
+        
+        for (ULong_t i=0; i<hitcount; i++) {
+        Double_t t_expected = t_min+ (t_max-t_min)*i/hitcount;
+		t2->GetEntry(i);
+        Double_t t_hit = (Double_t)(1.5625e-9)*(spidrTime*262144+ToA*16-FToA);
+        //cout << t_expected << ' ' << t_hit << endl;
+        h13->Fill(t_hit - t_expected);
+        }
+    
+        TTree *tsorted = (TTree*)t2->CloneTree(0);
+        
+        ts_sort_start.Set();
+    
+        if (sort) {
+            cout << hitcount << " sorting " << endl;
+            t2->SetEstimate(hitcount);
+            t2->Draw("SpidrTime*262144+ToA*16-FToA","","goff");
+            ULong_t *index = new ULong_t[hitcount];
+            TMath::Sort(hitcount, t2->GetV1(),index,kFALSE);
+
+            for (ULong_t i=0;i<hitcount;i++) {
+                t2->GetEntry(index[i]);
+                tsorted->Fill();
+                Double_t t_expected = t_min+ (t_max-t_min)*i/hitcount;
+                Double_t t_hit = (Double_t)(1.5625e-9)*(spidrTime*262144+ToA*16-FToA);
+                h14->Fill(t_hit - t_expected);
+            }
+            
+            ts_sort_end.Set();
+        
+            delete [] index;
+        
+            tsorted->Write();
+        }
+        else {
+            t2->Write();
+        }
+	
 
         delete[] buffer;
         delete[] databuffer;
@@ -353,35 +436,49 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0, unsigned first_
     h11->Write(); 
     h12->Write();
     h2quad->Write();  
-    
-    ULong_t nentries = t2->GetEntries();
-    t2->SetEstimate(nentries);
-    
-    t2->Draw("SpidrTime*262144+ToA*16-FToA","","goff");
-    
-    ULong_t *index = new ULong_t[nentries];
+    h13->Write();
+    h14->Write();
+     
+    //ULong_t nentries = t2->GetEntries();
 
-    cout << nentries << " sorting " << endl;
+    //t2->SetEstimate(nentries);
     
-	TMath::Sort(nentries, t2->GetV1(),index,kFALSE);
+    //t2->Draw("SpidrTime*262144+ToA*16-FToA","","goff");
+    
+    
+    //ULong_t *index = new ULong_t[nentries];
+
+    //cout << nentries << " sorting " << endl;
+    
+	//TMath::Sort(nentries, t2->GetV1(),index,kFALSE);
 	
 	
 	//Create an empty clone of the original tree
     
-	TTree *tsorted = (TTree*)t2->CloneTree(0);
-	for (ULong_t i=0;i<nentries;i++) {
-		t2->GetEntry(index[i]);
-		tsorted->Fill();
-	}
-	tsorted->Write();
-	delete [] index;
+	//TTree *tsorted = (TTree*)t2->CloneTree(0);
+	//for (ULong_t i=0;i<nentries;i++) {
+	//	t2->GetEntry(index[i]);
+	//	tsorted->Fill();
+	//}
+	
+	
+	//delete [] index;
     
-
+   
     //t2->Write();
     f->Close();
 
     delete h1;
     delete h2quad;
+    delete h11;
+    delete h12;
+    delete h13;
+    delete h14;
+    
+    TTimeStamp ts_end;
+    
+    cout << "total processing time: " << ts_end-ts_start << " (s)" <<endl;
+    if (sort)  cout << " sorting time: " << ts_sort_end - ts_sort_start << " (s)" <<endl;
 
     return 0;
 }
