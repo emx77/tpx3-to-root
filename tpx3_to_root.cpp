@@ -25,7 +25,6 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
     cout << " input file = " << filename << endl;
     string ofile = filename.substr(0,filename.size()-4)+"root";
     cout << " output file = " << ofile << endl;
-     
     TFile *f = new TFile(ofile.c_str(),"recreate");
 
     TTree *t2 = new TTree("t2","");
@@ -129,11 +128,19 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
             
             infi.read((char*)databuffer,size);
             
+            int tmp_max=0;
+            int tmp_min=100000;
+            int npixhits=0;
+            
             for (int i=0; i<pixdatasize; i++) {
                 //cout << hex << ' ' << databuffer[i] << dec << ' ';
                 ULong64_t temp = databuffer[i];
                 
                 spidrTime = (UShort_t) (temp & 0xffff);
+                
+                if (spidrTime>tmp_max) tmp_max=spidrTime;
+                if (spidrTime<tmp_min) tmp_min=spidrTime;
+                
                 
                 //cout << hex << (temp>>56) << dec << ' ';
                 
@@ -232,7 +239,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                 if (h2==0xb && hitcount < maxhits) {
                     if (hitcount%1000000==0) cout << "hit: " << hitcount << endl;
                     hitcount++;
-                    
+                    npixhits++;
                     chipcount[chipnr]++;
                     
                     // data driven pixel data
@@ -300,8 +307,13 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                 } // ==> if packet is a pixelhit
                 
             } // next datapacket entry 
-            
+        
+            // check for roll overs inside the datapacket
+            // if (npixhits>0) cout << "packet " << count << " " << npixhits << ' ' << tmp_min << ' ' << tmp_max << endl;
+        
+        
         } // next datapacket
+        
         
         cout << count << " data packets found " << endl;
         cout << hitcount << " pixel hits found " << endl;
