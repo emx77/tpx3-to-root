@@ -90,7 +90,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
         double tdc_time = -1;
         int trigcnt = -1;
     
-        while ((infi.good()) && count<nheaders) {
+        while ((infi.good()) && count<nheaders &&hitcount<maxhits) {
             if (count%10000==0) cout << "header: " << count << endl;
             count++;
 
@@ -156,20 +156,20 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                 
                 if (h4==0x71bf) {
                     int chipID = (int) (temp >> 16) & 0xffff;
-                    cout << count << ' ' << Form("EndOfCommand on %04x at %5d",chipID, spidrTime) << endl;
+                    if (debug) cout << count << ' ' << Form("EndOfCommand on %04x at %5d",chipID, spidrTime) << endl;
                 }
                 
                 if (h4==0x71b0) {
                     int chipID = (int) (temp >> 16) & 0xffff;
-                    cout << count << ' ' << Form("EndOfReadOut on %04x at %5d",chipID, spidrTime) << endl;
-                    cout << (int)chipnr << ' ' << chipcount[chipnr] << endl;
+                    if (debug) cout << count << ' ' << Form("EndOfReadOut on %04x at %5d",chipID, spidrTime) << endl;
+                    if (debug) cout << (int)chipnr << ' ' << chipcount[chipnr] << endl;
                     chipcount[chipnr] = 0;
                     frame[chipnr]++;
                 }
                 
                 if (h4==0x71ef) {
                     int chipID = (int) (temp >> 16) & 0xffff;
-                    cout << count << ' ' << Form("EndOfResetSequentialCommand on %04x at %5d",chipID, spidrTime) << endl;
+                    if (debug)  cout << count << ' ' << Form("EndOfResetSequentialCommand on %04x at %5d",chipID, spidrTime) << endl;
                 }
                 
                 int h2 = temp>>60;  
