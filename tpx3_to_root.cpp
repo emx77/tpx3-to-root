@@ -33,7 +33,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
     UChar_t chipnr,FToA; 
     UInt_t framenr;
    
-    UInt_t CToA;
+    Int_t CToA;
 
     // todo: use correct types
 
@@ -44,7 +44,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
     t2->Branch("ToT",&ToT,"ToT/s");
     t2->Branch("ToA",&ToA,"ToA/s");
     t2->Branch("FToA",&FToA,"FtoA/b");
-    t2->Branch("CToA",&CToA,"CToA/i");  
+    t2->Branch("CToA",&CToA,"CToA/I");  
     t2->Branch("SpidrTime",&spidrTime,"SpidrTime/s");  
 
     // cout << " opening file: " << filename << endl;
@@ -258,7 +258,11 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     ToA  = (UShort_t) ((temp >> (16 + 14)) & 0x3fff);
                     ToT  = (UShort_t) ((temp >> (16 + 4)) & 0x3ff);
                     FToA =  (UChar_t) ((temp >> 16) & 0xf);
-                    CToA = (ToA << 4) | (~FToA & 0xf);
+                    // CToA calculation to keep CToA>=0
+                    //CToA = (ToA << 4) | (~FToA & 0xf);
+                    // uncorrected CToA calculation 
+                    CToA = (ToA << 4) - FToA;
+                    
                     //if (hitcount%10000==0 || hitcount%10000==1) {
                     //  cout << "hitcount: " << hitcount << " pixel hit time " << spidrTime*409.6e-6+CToA*1.5625e-9 <<  endl;
                     //   cout << " global pixel hit time " << (timemaster >> 30)*2*13.4217728 + spidrTime*409.6e-6 + CToA*1.5625e-9 << endl;
