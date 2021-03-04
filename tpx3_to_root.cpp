@@ -10,6 +10,8 @@
 #include "TFile.h"
 #include "TTree.h"
 
+#include "TMath.h"
+
 using namespace std;
 
 int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
@@ -34,8 +36,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
     UInt_t framenr;
    
     Int_t CToA;
-
-    // todo: use correct types
+    Long_t GToA;
 
     t2->Branch("framenr",&framenr,"framenr/i");
     t2->Branch("chipnr",&chipnr,"chipnr/b");
@@ -44,7 +45,10 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
     t2->Branch("ToT",&ToT,"ToT/s");
     t2->Branch("ToA",&ToA,"ToA/s");
     t2->Branch("FToA",&FToA,"FtoA/b");
-    t2->Branch("CToA",&CToA,"CToA/I");  
+    // CToA now obsolete because of glocal ToA which inlcudes the spidrTime rollovers
+    // roll over detection requires at least one pixelhit every ~ 3s. 
+    // t2->Branch("CToA",&CToA,"CToA/I");  
+    t2->Branch("GToA",&GToA,"GToA/L");
     t2->Branch("SpidrTime",&spidrTime,"SpidrTime/s");  
 
     // cout << " opening file: " << filename << endl;
@@ -90,6 +94,13 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
         double tdc_time = -1;
         int trigcnt = -1;
     
+
+	// variables for roll over detection and correction
+        int ro_count=0;
+        int ro_state=0;
+        long maxGToA = TMath::Power(2,34);
+        int late_hit=0;
+           
         while ((infi.good()) && count<nheaders &&hitcount<maxhits) {
             if (count%10000==0) cout << "header: " << count << endl;
             count++;
@@ -128,8 +139,8 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
             
             infi.read((char*)databuffer,size);
             
-            int tmp_max=0;
-            int tmp_min=100000;
+            // int tmp_max=0;
+            // int tmp_min=100000;
             int npixhits=0;
             
             for (int i=0; i<pixdatasize; i++) {
@@ -138,10 +149,9 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                 
                 spidrTime = (UShort_t) (temp & 0xffff);
                 
-                if (spidrTime>tmp_max) tmp_max=spidrTime;
-                if (spidrTime<tmp_min) tmp_min=spidrTime;
-                
-                
+                //if (spidrTime>tmp_max) tmp_max=spidrTime;
+                //if (spidrTime<tmp_min) tmp_min=spidrTime;
+               
                 //cout << hex << (temp>>56) << dec << ' ';
                 
                 int hdr = (int)(temp>>56);
@@ -262,6 +272,29 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     //CToA = (ToA << 4) | (~FToA & 0xf);
                     // uncorrected CToA calculation 
                     CToA = (ToA << 4) - FToA;
+                    GToA = ((Long_t(spidrTime)) << 18 ) + Long_t(CToA);
+                    late_hit = 0;
+                    if (1.0*GToA>0.95*maxGToA && ro_state==0) { 
+                         ro_state=1;
+                         //cout << "ro1 ";
+                    }
+                    if (ro_state==1 && 1.0*GToA<0.05*maxGToA) {
+                        ro_state=2;
+                        //cout << "ro2 "; 
+                        ro_count++;
+                    }
+                    if (ro_state==2) {
+                            if (1.0*GToA>0.95*maxGToA) {
+                                late_hit=1;
+                                //cout << "lh " << ro_count << ' ';
+                            }
+                            else if (1.0*GToA>0.05*maxGToA) {
+                                ro_state=0;
+                                //cout << "ro0 ";
+                            }                                                        
+                    }
+                    GToA = GToA + (ro_count-late_hit)*maxGToA;
+                                 
                     
                     //if (hitcount%10000==0 || hitcount%10000==1) {
                     //  cout << "hitcount: " << hitcount << " pixel hit time " << spidrTime*409.6e-6+CToA*1.5625e-9 <<  endl;
