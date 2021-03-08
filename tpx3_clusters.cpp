@@ -72,7 +72,7 @@ int tpx3_clusters(string filename, long nhits=-1) {
        stepsize = nhits-nprocessed;
      }
      // cout << "selecting tree data ... " << endl;
-     int nsubset = t2->Draw("ypix:xpix:CToA:ToT", "","goff", stepsize, nprocessed);
+     int nsubset = t2->Draw("ypix:xpix:GToA:ToT", "","goff", stepsize, nprocessed);
      nprocessed+=nsubset;
      // cout << "number of entries in subset: " << nsubset << ' ' << istep << endl;
      
