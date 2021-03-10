@@ -51,6 +51,19 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
     t2->Branch("GToA",&GToA,"GToA/L");
     t2->Branch("SpidrTime",&spidrTime,"SpidrTime/s");  
 
+    // A tree fr TDC data
+
+    Double_t tdc_ts; // timestamp is s
+    UChar_t tdc_type;
+    UInt_t tdc_nr;
+    
+    TTree *ttdc = new TTree("ttrig","");
+   	ttdc->Branch("ts",&tdc_ts,"ts/D");
+    ttdc->Branch("type",&tdc_type,"type/b");
+    ttdc->Branch("nr",&tdc_nr,"nr/i"); 
+    
+
+
     // cout << " opening file: " << filename << endl;
 
     ifstream infi(filename.c_str(), ifstream::binary);
@@ -94,6 +107,10 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
         double tdc_time = -1;
         int trigcnt = -1;
     
+        unsigned long tdc_1r = 0;
+        unsigned long tdc_1f = 0;
+        unsigned long tdc_2r = 0;
+        unsigned long tdc_2f = 0;  
 
 	// variables for roll over detection and correction
         int ro_count=0;
@@ -143,6 +160,8 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
             // int tmp_min=100000;
             int npixhits=0;
             
+	    	
+
             for (int i=0; i<pixdatasize; i++) {
                 //cout << hex << ' ' << databuffer[i] << dec << ' ';
                 ULong64_t temp = databuffer[i];
@@ -185,27 +204,37 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                 int h2 = temp>>60;  
                 if (h2==0x6) {
                     int h3 = temp>>56;
-                    int tdc_nr=-1; // can be 1 or 2
+                    int tdc_chan=-1; // can be 1 or 2
                     int edge_type=-1; // 0 for rising edge, 1 for falling edge	
                     
                     if (h3 == 0x6f) {
-                        tdc_nr=1;
-                        edge_type=0;		
+                        tdc_chan=1;
+                        edge_type=0;
+                        tdc_1r++; 
+                        tdc_type = 0;
                     }
                     else if (h3 == 0x6a) {
-                        tdc_nr=1;
-                        edge_type=1;		
+                        tdc_chan=1;
+                        edge_type=1;
+                        tdc_1f++;
+                        tdc_type = 1; 
                     }
                     else if (h3 == 0x6e) {
-                        tdc_nr=2;
-                        edge_type=0;		
+                        tdc_chan=2;
+                        edge_type=0;
+                        tdc_2r++;
+                        tdc_type = 2; 
                     }
                     else if (h3 == 0x6b) {
-                        tdc_nr=2;
-                        edge_type=1;		
+                        tdc_chan=2;
+                        edge_type=1;
+                        tdc_2f++;
+                        tdc_type = 3;
                     } 	
                     trigcnt = (int) (temp>>44) & 0xfff;   
+                    tdc_nr = trigcnt;
                     
+		    // 32 bits 
                     long coarsetime = temp>>12 & 0xFFFFFFFF;	
                     
                     //cout << coarsetime*25e-9 << endl;
@@ -216,9 +245,10 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     tdc_time = (coarsetime*25E-9 + trigtime_fine*time_unit*1E-9);
                     if (count<20) { 
                         cout << count << ' ' << trigcnt << ' ' << hex << temp << dec << endl; 
-                        cout << "tdc_nr: " << tdc_nr << " edge_type: " << edge_type << " tdc_time: " << setprecision(15) <<  tdc_time << endl;
+                        cout << "tdc_chan: " << tdc_chan << " edge_type: " << edge_type << " tdc_time: " << setprecision(15) <<  tdc_time << endl;
                     }
-                    
+                    tdc_ts = tdc_time;
+                    ttdc->Fill();
                 }
                 if (h2==0x4) { 
                     
@@ -340,7 +370,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     h2quad->Fill(xpix,ypix);
                     
                     t2->Fill();
-                    
+                      
                 } // ==> if packet is a pixelhit
                 
             } // next datapacket entry 
@@ -355,6 +385,8 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
         cout << count << " data packets found " << endl;
         cout << hitcount << " pixel hits found " << endl;
         
+        cout << "tdc: " << tdc_1r << ' ' << tdc_1f << ' ' << tdc_2r << ' ' << tdc_2f << ' ' <<endl;  
+
         delete[] buffer;
         delete[] databuffer;
         
@@ -365,6 +397,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
     h2quad->Write();  
 
     t2->Write();
+    ttdc->Write();
     f->Close();
 
     delete h1;
