@@ -124,18 +124,25 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
 
     double tdc_time = -1;
     int trigcnt = -1;
+    double prev_tdc_time = -1;
     
     unsigned long tdc_1r = 0;
     unsigned long tdc_1f = 0;
     unsigned long tdc_2r = 0;
     unsigned long tdc_2f = 0;  
 
+    double maxTDC = 3.125E-9*TMath::Power(2,35);
+    int ro_tdc_count = 0;   
+    //int ro_tdc_state = 0;   
+    
+    
 	// variables for roll over detection and correction
     int ro_count=0;
     int ro_state=0;
     long maxGToA = TMath::Power(2,34);
     int late_hit=0;
-       
+    
+    
     
     for (int ifile=0; ifile<nfiles; ifile++) { 
         cout << " opening file: " << tpx3_file[ifile] << endl;
@@ -262,6 +269,9 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     trigcnt = (int) (temp>>44) & 0xfff;   
                     tdc_nr = trigcnt;
                     
+                    
+                    prev_tdc_time = tdc_time;
+                    
 		    // 32 bits 
                     long coarsetime = temp>>12 & 0xFFFFFFFF;	
                     
@@ -275,7 +285,12 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                         cout << count << ' ' << trigcnt << ' ' << hex << temp << dec << endl; 
                         cout << "tdc_chan: " << tdc_chan << " edge_type: " << edge_type << " tdc_time: " << setprecision(15) <<  tdc_time << endl;
                     }
-                    tdc_ts = tdc_time;
+                    
+                    if (tdc_time<prev_tdc_time) {
+                        ro_tdc_count+=1;
+                    }
+                    
+                    tdc_ts = tdc_time+(ro_tdc_count)*maxTDC;
                     ttdc->Fill();
                 }
                 if (h2==0x4) { 
