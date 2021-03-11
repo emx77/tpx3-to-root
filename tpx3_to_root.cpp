@@ -1,6 +1,7 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+#include <vector>
 
 #include "TROOT.h"
 
@@ -25,7 +26,33 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
     TH2F *h2quad = new TH2F("h2quad","",516,0,516,516,0,516);
 
     cout << " input file = " << filename << endl;
-    string ofile = filename.substr(0,filename.size()-4)+"root";
+    
+    int pos = filename.rfind('.');
+    
+    string extension = filename.substr(pos+1,filename.size());
+    
+    vector<string> tpx3_file;
+    
+    if (extension=="txt") { // list of files
+        ifstream f(filename);
+        string tmp_string;
+        while (!f.eof() ) {
+          f >> tmp_string;
+          // cout << tmp_string << endl;
+          if (f.eof()) break;
+          tpx3_file.push_back(tmp_string); 
+        }
+    }
+    else {
+        tpx3_file.push_back(filename);
+    }
+    
+    
+    int nfiles = tpx3_file.size();
+    
+    cout << "nr of files to process: " << tpx3_file.size() << endl;
+    
+    string ofile = filename.substr(0,pos+1)+"root";
     cout << " output file = " << ofile << endl;
     TFile *f = new TFile(ofile.c_str(),"recreate");
 
@@ -62,61 +89,62 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
     ttdc->Branch("type",&tdc_type,"type/b");
     ttdc->Branch("nr",&tdc_nr,"nr/i"); 
     
-
-
-    // cout << " opening file: " << filename << endl;
-
-    ifstream infi(filename.c_str(), ifstream::binary);
-    if (!infi) {
-        cout << " file: " << filename << " not found." << endl;
-    }
-    else {
-
-        const int hl=8; // length of header packet
-        UChar_t *buffer = new UChar_t[hl];   
-        const int dl=9000; // max length of data packet 
-        unsigned long *databuffer = new unsigned long[dl];
-
-        int nheaders= 10000000;
-        unsigned long maxhits =2000000000;
-        if (nrawpixelhits!=0) maxhits=nrawpixelhits;
-
-        unsigned long Timer_LSB32 = 0;
-        unsigned long Timer_MSB16 = 0;
-        unsigned long long timemaster = 0;
-        
-        // loop over the headers in the file
-        
-        // number of data packets
-        long count=0;
-        
-        //number of pixel hits 
-        unsigned long hitcount=0;
-        
-        // counts per chip
-        long chipcount[4];
-        
-        // frame counter per chip
-        int frame[4];
-        
-        for (int i=0;i<4;i++) {
-            chipcount[i]=0;
-            frame[i]=0;
-        }
-
-        double tdc_time = -1;
-        int trigcnt = -1;
     
-        unsigned long tdc_1r = 0;
-        unsigned long tdc_1f = 0;
-        unsigned long tdc_2r = 0;
-        unsigned long tdc_2f = 0;  
+    const int hl=8; // length of header packet
+    UChar_t *buffer = new UChar_t[hl];   
+    const int dl=9000; // max length of data packet 
+    unsigned long *databuffer = new unsigned long[dl];
+
+    int nheaders= 10000000;
+    unsigned long maxhits =2000000000;
+    if (nrawpixelhits!=0) maxhits=nrawpixelhits;
+
+    unsigned long Timer_LSB32 = 0;
+    unsigned long Timer_MSB16 = 0;
+    unsigned long long timemaster = 0;
+        
+    // loop over the headers in the file
+        
+    // number of data packets
+    long count=0;
+        
+    //number of pixel hits 
+    unsigned long hitcount=0;
+        
+    // counts per chip
+    long chipcount[4];
+        
+    // frame counter per chip
+    int frame[4];
+        
+    for (int i=0;i<4;i++) {
+        chipcount[i]=0;
+        frame[i]=0;
+    }
+
+    double tdc_time = -1;
+    int trigcnt = -1;
+    
+    unsigned long tdc_1r = 0;
+    unsigned long tdc_1f = 0;
+    unsigned long tdc_2r = 0;
+    unsigned long tdc_2f = 0;  
 
 	// variables for roll over detection and correction
-        int ro_count=0;
-        int ro_state=0;
-        long maxGToA = TMath::Power(2,34);
-        int late_hit=0;
+    int ro_count=0;
+    int ro_state=0;
+    long maxGToA = TMath::Power(2,34);
+    int late_hit=0;
+       
+    
+    for (int ifile=0; ifile<nfiles; ifile++) { 
+        cout << " opening file: " << tpx3_file[ifile] << endl;
+        ifstream infi(tpx3_file[ifile].c_str(), ifstream::binary);
+        if (!infi) {
+            cout << " file: " << filename << " not found." << endl;
+        }
+        else {
+
            
         while ((infi.good()) && count<nheaders &&hitcount<maxhits) {
             if (count%10000==0) cout << "header: " << count << endl;
@@ -382,17 +410,23 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
         } // next datapacket
         
         
-        cout << count << " data packets found " << endl;
-        cout << hitcount << " pixel hits found " << endl;
         
-        cout << "tdc: " << tdc_1r << ' ' << tdc_1f << ' ' << tdc_2r << ' ' << tdc_2f << ' ' <<endl;  
-
-        delete[] buffer;
-        delete[] databuffer;
         
-    } // file exists and good
-    infi.close();
+        
+        } // file exists and good
+    
+        infi.close();
   
+    } // next file in list
+    
+    cout << count << " data packets found " << endl;
+    cout << hitcount << " pixel hits found " << endl;
+        
+    cout << "tdc: " << tdc_1r << ' ' << tdc_1f << ' ' << tdc_2r << ' ' << tdc_2f << ' ' <<endl;  
+
+    delete[] buffer;
+    delete[] databuffer;
+    
     h1->Write();
     h2quad->Write();  
 
