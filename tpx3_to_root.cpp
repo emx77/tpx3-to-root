@@ -142,8 +142,6 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
     long maxGToA = TMath::Power(2,34);
     int late_hit=0;
     
-    
-    
     for (int ifile=0; ifile<nfiles; ifile++) { 
         cout << " opening file: " << tpx3_file[ifile] << endl;
         ifstream infi(tpx3_file[ifile].c_str(), ifstream::binary);
@@ -185,7 +183,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
             //cout << " next packet size = " << size << endl;
             
             if (size>dl) {
-                cout << "data size > " << dl << endl;
+                cout << size << " data size > " << dl << endl;
                 break;
             }
             
@@ -451,6 +449,6 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
 
     delete h1;
     delete h2quad;
-  
+      
     return 0;
 }

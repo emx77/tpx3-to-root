@@ -11,6 +11,9 @@
 int clfind(int ihit, int clusid, int nsubset,
 	   double *x, double *y, double *t, int *clusnr);
 
+double t0find(Long64_t ntdc, double *tdc_time, double pixelhit_time);
+
+
 int tpx3_clusters(string filename, long nhits=-1) {
 
    gROOT->Reset();
@@ -27,27 +30,38 @@ int tpx3_clusters(string filename, long nhits=-1) {
 
    TTree *t2 = (TTree*)f->Get("t2");
    long nentries=t2->GetEntries();
-   cout << "Number of root tree entries: " << nentries << endl;
+   cout << "Number of pixelhit entries: " << nentries << endl;
    
-   const Int_t kMaxPixel=100; // maximum allowed cluster size
+   TTree *ttdc = (TTree*)f->Get("ttrig");
+   Long64_t ntrig = ttdc->GetEntries();
+   cout << "Number of tdc entries: " << ntrig << endl; 
+   
+   
+   // select rising edge TDCs
+   ttdc->Draw("ts","type==0||type==2","goff");
+   double *tdc = ttdc->GetV1();
+   
+   const Int_t kMaxPixel=300; // maximum allowed cluster size
    Int_t npix;
    Short_t xpix[kMaxPixel];
    Short_t ypix[kMaxPixel];
-   Int_t tpix[kMaxPixel];
+   Long64_t tpix[kMaxPixel];
    Short_t epix[kMaxPixel];
    //Float_t mx;
    //Float_t my;
    //Int_t etot;
    //Int_t dtpix[kMaxPixel];
    //Int_t tmin;
+   Double_t tof[kMaxPixel];
    
    TFile *clFile = new TFile(ofile.c_str(),"recreate");
    TTree *tcl = new TTree("tcl","Cluster data tree");
    tcl->Branch("n",&npix,"n/I");
    tcl->Branch("x",xpix,"x[n]/S");
    tcl->Branch("y",ypix,"y[n]/S");
-   tcl->Branch("t",tpix,"t[n]/I");
+   tcl->Branch("t",tpix,"t[n]/L");
    tcl->Branch("e",epix,"e[n]/S");
+   tcl->Branch("tof",tof,"tof[n]/D");
    //tcl->Branch("mx",&mx,"mx/F");
    //tcl->Branch("my",&my,"my/F");
    //tcl->Branch("etot",&etot,"etot/I");
@@ -87,6 +101,9 @@ int tpx3_clusters(string filename, long nhits=-1) {
      
      // int *clusnr = new int[nsubset];
 
+     
+     
+     
      // clusters IDs need to be resetted
      for (int i=0; i<nsubset; i++) {
        clusnr[i]=-1;
@@ -120,19 +137,20 @@ int tpx3_clusters(string filename, long nhits=-1) {
        for (int j=0; j<nsubset; j++) {
          //cout << j << endl; 
          if (clusnr[j]==i && npix < kMaxPixel) {
-           xpix[npix]=(Short_t)(x[j]+0.5);
-	   ypix[npix]=(Short_t)(y[j]+0.5);
-	   tpix[npix]=(Int_t)(t[j]+0.5);
+            xpix[npix]=(Short_t)(x[j]+0.5);
+            ypix[npix]=(Short_t)(y[j]+0.5);
+            tpix[npix]=(Long64_t)(t[j]+0.5);
 	   //if (tpix[npix]<tmin) {
 	   //tmin=tpix[npix];
 	   //}
-	   epix[npix]=(Short_t)(e[j]+0.5);
+            epix[npix]=(Short_t)(e[j]+0.5);
            //cout << npix << ' ' << e[j] << ' ' << epix[npix] << endl;
 	   //mx+=xpix[npix];
 	   //my+=ypix[npix];
 	   //etot+=epix[npix];
-	   npix++;
-	 }
+            tof[npix] = (Double_t) (t[j]*1.5625E-9 - t0find(ntrig, tdc, t[j]*1.5625E-9) ) ;
+            npix++;
+        }
        }
        //if (npix!=0) {
        //mx = 0.5+mx/npix;
@@ -176,3 +194,15 @@ int clfind(int ihit, int clusid, int nsubset,
  
   return 0;
 }
+
+double t0find(Long64_t ntdc, double *tdc_time, double pixelhit_time) {
+    Long64_t i=0;
+    while (i<ntdc) {
+      if (pixelhit_time<tdc_time[i]) {
+          break;
+      }
+      i++;
+    }
+    return tdc_time[i-1];
+};
+
