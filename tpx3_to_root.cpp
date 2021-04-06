@@ -279,10 +279,10 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     int trigtime_fine = (temp & 0x0000000000000E00) | (tmpfine & 0x00000000000001FF);   // combine the 3 bits with a size of 3.125 ns with the rest of the fine time from the 12 clock phases
                     double time_unit=25./4096;
                     tdc_time = (coarsetime*25E-9 + trigtime_fine*time_unit*1E-9);
-                    if (count<20) { 
-                        cout << count << ' ' << trigcnt << ' ' << hex << temp << dec << endl; 
-                        cout << "tdc_chan: " << tdc_chan << " edge_type: " << edge_type << " tdc_time: " << setprecision(15) <<  tdc_time << endl;
-                    }
+                    //if (count<20) { 
+                    //    cout << count << ' ' << trigcnt << ' ' << hex << temp << dec << endl; 
+                    //    cout << "tdc_chan: " << tdc_chan << " edge_type: " << edge_type << " tdc_time: " << setprecision(15) <<  tdc_time << endl;
+                    //}
                     
                     if (tdc_time<prev_tdc_time) {
                         ro_tdc_count+=1;
@@ -342,7 +342,8 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     // CToA calculation to keep CToA>=0
                     //CToA = (ToA << 4) | (~FToA & 0xf);
                     // uncorrected CToA calculation 
-                    CToA = (ToA << 4) - FToA;
+                    CToA = (Int_t) (ToA << 4) - FToA;
+                                                  
                     GToA = ((Long_t(spidrTime)) << 18 ) + Long_t(CToA);
                     late_hit = 0;
                     if (1.0*GToA>0.95*maxGToA && ro_state==0) { 

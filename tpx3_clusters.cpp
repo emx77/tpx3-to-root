@@ -13,6 +13,7 @@ int clfind(int ihit, int clusid, int nsubset,
 
 double t0find(Long64_t ntdc, double *tdc_time, double pixelhit_time);
 
+Long64_t i_tdc=0;
 
 int tpx3_clusters(string filename, long nhits=-1) {
 
@@ -35,11 +36,14 @@ int tpx3_clusters(string filename, long nhits=-1) {
    TTree *ttdc = (TTree*)f->Get("ttrig");
    Long64_t ntrig = ttdc->GetEntries();
    cout << "Number of tdc entries: " << ntrig << endl; 
+   double *tdc;
    
    
    // select rising edge TDCs
+   ttdc->SetEstimate(-1);
    ttdc->Draw("ts","type==0||type==2","goff");
-   double *tdc = ttdc->GetV1();
+   tdc = ttdc->GetV1();
+   cout << tdc[0] << ' ' << endl;
    
    const Int_t kMaxPixel=300; // maximum allowed cluster size
    Int_t npix;
@@ -196,13 +200,14 @@ int clfind(int ihit, int clusid, int nsubset,
 }
 
 double t0find(Long64_t ntdc, double *tdc_time, double pixelhit_time) {
-    Long64_t i=0;
-    while (i<ntdc) {
-      if (pixelhit_time<tdc_time[i]) {
+    // Long64_t i=0;
+    while (i_tdc<ntdc) {
+      if (pixelhit_time<tdc_time[i_tdc]) {
           break;
       }
-      i++;
+      i_tdc++;
     }
-    return tdc_time[i-1];
+    i_tdc--;
+    return tdc_time[i_tdc];
 };
 
