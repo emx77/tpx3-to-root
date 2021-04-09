@@ -1,6 +1,6 @@
 # tpx3-to-root
 
-Example software to demonstrate how to convert .tpx3 format to Root tree format.
+Example software to demonstrate how to convert .tpx3 (Timepix3) format to Root tree format.
 
 ## instructions
 
