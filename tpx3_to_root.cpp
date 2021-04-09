@@ -278,7 +278,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     tmpfine = ((tmpfine-1) << 9) / 12;     // subtract 1 (as fractions 0 to 11 are numbered 1 to 12), then shift by 9 positions to reduce the error coming from the integer division by 12 
                     int trigtime_fine = (temp & 0x0000000000000E00) | (tmpfine & 0x00000000000001FF);   // combine the 3 bits with a size of 3.125 ns with the rest of the fine time from the 12 clock phases
                     double time_unit=25./4096;
-                    tdc_time = (coarsetime*25E-9 + trigtime_fine*time_unit*1E-9);
+                    tdc_time = ((double)coarsetime*25E-9 + trigtime_fine*time_unit*1E-9);
                     //if (count<20) { 
                     //    cout << count << ' ' << trigcnt << ' ' << hex << temp << dec << endl; 
                     //    cout << "tdc_chan: " << tdc_chan << " edge_type: " << edge_type << " tdc_time: " << setprecision(15) <<  tdc_time << endl;

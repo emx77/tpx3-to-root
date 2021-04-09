@@ -43,7 +43,7 @@ int tpx3_clusters(string filename, long nhits=-1) {
    ttdc->SetEstimate(-1);
    ttdc->Draw("ts","type==0||type==2","goff");
    tdc = ttdc->GetV1();
-   cout << tdc[0] << ' ' << endl;
+   if (ntrig>0) cout << tdc[0] << ' ' << endl;
    
    const Int_t kMaxPixel=300; // maximum allowed cluster size
    Int_t npix;
@@ -152,8 +152,12 @@ int tpx3_clusters(string filename, long nhits=-1) {
 	   //mx+=xpix[npix];
 	   //my+=ypix[npix];
 	   //etot+=epix[npix];
-            tof[npix] = (Double_t) (t[j]*1.5625E-9 - t0find(ntrig, tdc, t[j]*1.5625E-9) ) ;
-            npix++;
+            if (ntrig>0) {
+                // calculate ToF only when TDC timestamps are available
+                tof[npix] = (Double_t) (t[j]*1.5625E-9 - t0find(ntrig, tdc, t[j]*1.5625E-9) ) ;
+            }
+                npix++;
+            
         }
        }
        //if (npix!=0) {
