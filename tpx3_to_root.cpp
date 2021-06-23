@@ -17,13 +17,15 @@ using namespace std;
 
 int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
 
-    int debug=0;
+    int debug = 0;
+    
+    int nInterPix = 2;
     
     gROOT->Reset();
 
     TH1F *h1 = new TH1F("h1","erik",256,0,256);
 
-    TH2F *h2quad = new TH2F("h2quad","",516,0,516,516,0,516);
+    // TH2F *h2quad = new TH2F("h2quad","",516,0,516,516,0,516);
 
     cout << " input file = " << filename << endl;
     
@@ -318,6 +320,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                 }
                 
                 if (h2==0xb && hitcount < maxhits) {
+                    
                     if (hitcount%1000000==0) cout << "hit: " << hitcount << endl;
                     hitcount++;
                     npixhits++;
@@ -343,7 +346,49 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     //CToA = (ToA << 4) | (~FToA & 0xf);
                     // uncorrected CToA calculation 
                     CToA = (Int_t) (ToA << 4) - FToA;
-                                                  
+                    
+                    // ToA shift example, can differ from system to system
+                    bool corr_toa_shift=true;
+                    if (corr_toa_shift) {
+                    // chip 0 U goett
+                    //"adjust" : [ 1, 93, 16, 97, 16, 98, 16, 99, 16, 100, 16, 101, 16, 116, 1, 117, 1 ]
+                    
+                        if (chipnr==0) {
+                            int tmp = dcol/2;
+                            if (tmp==93 || (tmp>=97 && tmp<=101) ) {
+                                CToA-=16;
+                            }
+                        }
+                    
+                        //"adjust" : [ 1, 97, 16, 98, 16, 99, 16, 100, 16, 101, 16 ]
+                    
+                        if (chipnr==1) {
+                            int tmp = dcol/2;
+                            if (tmp>=97 && tmp<=101)  {
+                                CToA-=16;
+                            }
+                        }
+                    
+                        // "adjust" : [ 1, 97, 16, 98, 16, 99, 16, 100, 16, 101, 16, 102, 16 ]
+                    
+                        if (chipnr==2) {
+                            int tmp = dcol/2;
+                            if (tmp>=97 && tmp<=102)  {
+                                CToA-=16;
+                            }
+                        }
+                     
+                        //adjust" : [ 1, 1, 1, 12, 1, 50, 1, 97, 16, 98, 16, 99, 16, 100, 16, 101, 16 ] 
+                   
+                   
+                        if (chipnr==3) {
+                            int tmp = dcol/2;
+                            if (tmp>=97 && tmp<=101)  {
+                                CToA-=16;
+                            }
+                        } 
+                    }
+                    
                     GToA = ((Long_t(spidrTime)) << 18 ) + Long_t(CToA);
                     late_hit = 0;
                     if (1.0*GToA>0.95*maxGToA && ro_state==0) { 
@@ -393,23 +438,27 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     
                     
                     if (chipnr==0) {
-                        xpix=x+260;
+                        //xpix=x+260;
+                        xpix=x+256+nInterPix;
                         ypix=y; 
                     }
                     if (chipnr==1) {
-                        xpix=255-x+260;
-                        ypix=255-y+260;
+                        //xpix=255-x+260;
+                        //ypix=255-y+260;
+                        xpix=255-x+256+nInterPix;
+                        ypix=255-y+256+nInterPix;
                     }
                     if (chipnr==2) {
                         xpix=255-x;
-                        ypix=255-y+260;
+                        //ypix=255-y+260;
+                        ypix=255-y+256+nInterPix;
                     }
                     if (chipnr==3) {
                         xpix=x;
                         ypix=y;
                     }
                     
-                    h2quad->Fill(xpix,ypix);
+                    //h2quad->Fill(xpix,ypix);
                     
                     t2->Fill();
                       
@@ -442,14 +491,14 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
     delete[] databuffer;
     
     h1->Write();
-    h2quad->Write();  
+    //h2quad->Write();  
 
     t2->Write();
     ttdc->Write();
     f->Close();
 
     delete h1;
-    delete h2quad;
+    //delete h2quad;
       
     return 0;
 }
