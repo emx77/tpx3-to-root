@@ -98,8 +98,10 @@ int tpx3_clusters(string filename, long nhits=-1) {
  
      // cout << "cluster finding ... " << endl;
    
-     double *x = t2->GetV1();
-     double *y = t2->GetV2();
+     // keep x and y axis consistent
+     double *x = t2->GetV2();
+     double *y = t2->GetV1();
+     
      double *t = t2->GetV3();
      double *e = t2->GetV4();
      
@@ -155,6 +157,7 @@ int tpx3_clusters(string filename, long nhits=-1) {
             if (ntrig>0) {
                 // calculate ToF only when TDC timestamps are available
                 tof[npix] = (Double_t) (t[j]*1.5625E-9 - t0find(ntrig, tdc, t[j]*1.5625E-9) ) ;
+                //cout << setprecision(15) <<  tof[npix] << ' ' << t[j]*1.5625E-9 << ' ' << xpix[npix] << ' ' << ypix[npix] << endl; 
             }
                 npix++;
             
@@ -205,13 +208,27 @@ int clfind(int ihit, int clusid, int nsubset,
 
 double t0find(Long64_t ntdc, double *tdc_time, double pixelhit_time) {
     // Long64_t i=0;
+    // Find a tdc time stamp later then the pixel hit
     while (i_tdc<ntdc) {
       if (pixelhit_time<tdc_time[i_tdc]) {
           break;
       }
       i_tdc++;
     }
-    i_tdc--;
+    // There are not always pixelhits for each TDC time stamp
+    // and the pixelhits are not sorted in time;
+    // Check if previous TDC time stamps are still later than the 
+    // pixelhit.
+    while (i_tdc>=0) {
+      if (pixelhit_time<tdc_time[i_tdc]) {
+          i_tdc--;
+      }
+      else {
+          break;
+      }
+    }
+    // i_tdc--;
+    // cout << setprecision(15)  << tdc_time[i_tdc] << ' '; 
     return tdc_time[i_tdc];
 };
 
