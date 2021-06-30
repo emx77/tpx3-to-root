@@ -286,6 +286,8 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     //    cout << "tdc_chan: " << tdc_chan << " edge_type: " << edge_type << " tdc_time: " << setprecision(15) <<  tdc_time << endl;
                     //}
                     
+                    //tdc_time-=2.*TMath::Power(2,34)*1.5625e-9;
+                    
                     if (tdc_time<prev_tdc_time) {
                         ro_tdc_count+=1;
                     }

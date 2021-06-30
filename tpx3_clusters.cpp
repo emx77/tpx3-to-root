@@ -45,7 +45,7 @@ int tpx3_clusters(string filename, long nhits=-1) {
    tdc = ttdc->GetV1();
    if (ntrig>0) cout << tdc[0] << ' ' << endl;
    
-   const Int_t kMaxPixel=300; // maximum allowed cluster size
+   const Int_t kMaxPixel=5000; // maximum allowed cluster size
    Int_t npix;
    Short_t xpix[kMaxPixel];
    Short_t ypix[kMaxPixel];
