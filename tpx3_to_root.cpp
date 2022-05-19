@@ -354,10 +354,21 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     if (corr_toa_shift) {
                     // chip 0 U goett
                     //"adjust" : [ 1, 93, 16, 97, 16, 98, 16, 99, 16, 100, 16, 101, 16, 116, 1, 117, 1 ]
-                    
+                    //if (chipnr==0) {
+                    //        int tmp = dcol/2;
+                    //        if (tmp==93 || (tmp>=97 && tmp<=101) ) {
+                    //            CToA-=16;
+                    //        }
+                    //    }                    
+
+                    // chip_0 I036 TPX3CAM
+                    //"adjust" : [ 1, 97, 16, 98, 16, 99, 16, 100, 16, 101, 16 ]
+
                         if (chipnr==0) {
                             int tmp = dcol/2;
-                            if (tmp==93 || (tmp>=97 && tmp<=101) ) {
+                            //if (tmp>=97 && tmp<=101) {
+                            if (tmp>=97 && tmp<=102) {
+                            
                                 CToA-=16;
                             }
                         }
