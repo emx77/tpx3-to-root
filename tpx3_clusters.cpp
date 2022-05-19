@@ -57,6 +57,8 @@ int tpx3_clusters(string filename, long nhits=-1) {
    //Int_t dtpix[kMaxPixel];
    //Int_t tmin;
    Double_t tof[kMaxPixel];
+   Double_t toa_drift[kMaxPixel];
+   
    
    TFile *clFile = new TFile(ofile.c_str(),"recreate");
    TTree *tcl = new TTree("tcl","Cluster data tree");
@@ -66,6 +68,8 @@ int tpx3_clusters(string filename, long nhits=-1) {
    tcl->Branch("t",tpix,"t[n]/L");
    tcl->Branch("e",epix,"e[n]/S");
    tcl->Branch("tof",tof,"tof[n]/D");
+   tcl->Branch("toa_drit",toa_drift,"toa_drift[n]/D");
+
    //tcl->Branch("mx",&mx,"mx/F");
    //tcl->Branch("my",&my,"my/F");
    //tcl->Branch("etot",&etot,"etot/I");
@@ -89,7 +93,20 @@ int tpx3_clusters(string filename, long nhits=-1) {
      if ( (nhits-nprocessed)<stepsize ) {
        stepsize = nhits-nprocessed;
      }
+
+
+
      // cout << "selecting tree data ... " << endl;
+
+     t2->Draw("ToAdrift", "","goff", stepsize, nprocessed);
+     double *dt = t2->GetV1();
+     double dt_tmp[16384];
+     for (int i=0; i<stepsize; i++) {
+         dt_tmp[i]=dt[i]; 
+     }		 
+
+
+
      int nsubset = t2->Draw("ypix:xpix:GToA:ToT", "","goff", stepsize, nprocessed);
      nprocessed+=nsubset;
      // cout << "number of entries in subset: " << nsubset << ' ' << istep << endl;
@@ -104,6 +121,8 @@ int tpx3_clusters(string filename, long nhits=-1) {
      
      double *t = t2->GetV3();
      double *e = t2->GetV4();
+
+    
      
      // int *clusnr = new int[nsubset];
 
@@ -150,6 +169,10 @@ int tpx3_clusters(string filename, long nhits=-1) {
 	   //tmin=tpix[npix];
 	   //}
             epix[npix]=(Short_t)(e[j]+0.5);
+            toa_drift[npix] = dt_tmp[j]; 
+
+
+	   	
            //cout << npix << ' ' << e[j] << ' ' << epix[npix] << endl;
 	   //mx+=xpix[npix];
 	   //my+=ypix[npix];
@@ -196,8 +219,8 @@ int clfind(int ihit, int clusid, int nsubset,
 
   for (int i=0; i<nsubset; i++) {
     if (clusnr[i]<0) {
-      if (  TMath::Abs(x[i]-x[ihit])<=1 &&  TMath::Abs(y[i]-y[ihit])<=1
-	    && TMath::Abs(t[i]-t[ihit])<=640 ) {
+      if (  (TMath::Abs(x[i]-x[ihit])==1 ||  TMath::Abs(y[i]-y[ihit])==1)
+	    && TMath::Abs(t[i]-t[ihit])<=150 ) {
 	clfind(i,clusid,nsubset,x,y,t,clusnr);
       }
     }

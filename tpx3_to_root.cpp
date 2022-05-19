@@ -15,11 +15,81 @@
 
 using namespace std;
 
+// def fi_tot(ToT, a, b, c, t): 
+//	return (a * t + ToT - b + np.sqrt( (b + a*t -ToT)*(b + a*t -ToT) + 4.*a*c))/(2.*a)
+//def f_toa(x, c, t, d):
+//    return c / (x - t) + d
+
+//def f_tot(x, a, b, c, t):
+//        return a*x + b - c/(x - t)
+
+double mv_tot(double ToT, double a, double b, double c, double t) {
+    double tmp = b + a*t -ToT;	
+    return (a * t + ToT - b + TMath::Sqrt( tmp*tmp + 4.*a*c))/(2.*a);
+}
+double toa_mv(double mv, double c, double t, double d) {
+    return c / (mv - t) + d;	
+}
+
 int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
 
+
+    // -------------
+    // toa correction
+    /*
+    cout << " loading toa calibration parameters." << endl;
+    
+    TFile * cal_file = new TFile("/home/asi/.accos/calibrationtest-pulse-calibration.root");
+    TTree * cal_par = (TTree*) cal_file->Get("root");
+    cal_par->Print();
+
+    double ctoa[256][256]; 
+    double dtoa[256][256];
+    double ttoa[256][256];
+
+    double atot[256][256]; 
+    double btot[256][256];
+    double ctot[256][256];
+    double ttot[256][256];
+
+    // -----
+    cal_par->Draw("Ctoa:Dtoa:Ttoa","","goff");
+    for (int i=0; i<256; i++) {
+	for (int j=0; j<256; j++) {
+	    double val1 = cal_par->GetV1()[j+i*256];
+	    double val2 = cal_par->GetV2()[j+i*256];
+	    double val3 = cal_par->GetV3()[j+i*256];
+           
+	    ctoa[j][255-i]=val1;
+	    dtoa[j][255-i]=val2;
+	    ttoa[j][255-i]=val3;            		
+	}
+    }	
+
+
+
+    // -----
+    cal_par->Draw("Atot:Btot:Ctot:Ttot","","goff");
+    for (int i=0; i<256; i++) {
+	for (int j=0; j<256; j++) {
+	    double val1 = cal_par->GetV1()[j+i*256];
+	    double val2 = cal_par->GetV2()[j+i*256];
+	    double val3 = cal_par->GetV3()[j+i*256];
+            double val4 = cal_par->GetV4()[j+i*256];
+
+	    atot[j][255-i]=val1;
+	    btot[j][255-i]=val2;
+	    ctot[j][255-i]=val3;
+            ttot[j][255-i]=val4;		
+	}
+    }
+    */
+
+    int sel_chip = 3;
+    
     int debug = 0;
     
-    int nInterPix = 2;
+    int nInterPix = 0;
     
     gROOT->Reset();
 
@@ -66,6 +136,8 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
    
     Int_t CToA;
     Long_t GToA;
+    
+    Double_t ToAdrift;
 
     t2->Branch("framenr",&framenr,"framenr/i");
     t2->Branch("chipnr",&chipnr,"chipnr/b");
@@ -79,6 +151,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
     // t2->Branch("CToA",&CToA,"CToA/I");  
     t2->Branch("GToA",&GToA,"GToA/L");
     t2->Branch("SpidrTime",&spidrTime,"SpidrTime/s");  
+    //t2->Branch("ToAdrift",&ToAdrift,"ToAdrift/D"); 
 
     // A tree fr TDC data
 
@@ -191,13 +264,16 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
             
             infi.read((char*)databuffer,size);
             
+            
+
             // int tmp_max=0;
             // int tmp_min=100000;
             int npixhits=0;
             
 	    	
-
-            for (int i=0; i<pixdatasize; i++) {
+            //if (chipnr == sel_chip) { 
+            if (true) {
+	    for (int i=0; i<pixdatasize; i++) {
                 //cout << hex << ' ' << databuffer[i] << dec << ' ';
                 ULong64_t temp = databuffer[i];
                 
@@ -281,8 +357,8 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     int trigtime_fine = (temp & 0x0000000000000E00) | (tmpfine & 0x00000000000001FF);   // combine the 3 bits with a size of 3.125 ns with the rest of the fine time from the 12 clock phases
                     double time_unit=25./4096;
                     tdc_time = ((double)coarsetime*25E-9 + trigtime_fine*time_unit*1E-9);
-                    //if (count<20) { 
-                    //    cout << count << ' ' << trigcnt << ' ' << hex << temp << dec << endl; 
+                    //if (count<10000) { 
+                    //    cout << (int) chipnr << ' ' << count << ' ' << trigcnt << ' ' << hex << temp << dec << endl; 
                     //    cout << "tdc_chan: " << tdc_chan << " edge_type: " << edge_type << " tdc_time: " << setprecision(15) <<  tdc_time << endl;
                     //}
                     
@@ -357,27 +433,29 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     
                         if (chipnr==0) {
                             int tmp = dcol/2;
-                            if (tmp==93 || (tmp>=97 && tmp<=101) ) {
-                                CToA-=16;
-                            }
+                            //if (tmp==93 || (tmp>=97 && tmp<=101) ) { // HZB
+                            //if (tmp>=97 && tmp<=101) { // tpx tst camera 
+                            ////if (tmp>=97 && tmp<=101) { // tpx tst camera I0036 
+                            ////	CToA-=16;
+  	                    ////}
                         }
                     
                         //"adjust" : [ 1, 97, 16, 98, 16, 99, 16, 100, 16, 101, 16 ]
                     
                         if (chipnr==1) {
                             int tmp = dcol/2;
-                            if (tmp>=97 && tmp<=101)  {
-                                CToA-=16;
-                            }
+                            ////if (tmp>=97 && tmp<=101)  {
+                            ////    CToA-=16;
+                            //// }
                         }
                     
                         // "adjust" : [ 1, 97, 16, 98, 16, 99, 16, 100, 16, 101, 16, 102, 16 ]
                     
                         if (chipnr==2) {
                             int tmp = dcol/2;
-                            if (tmp>=97 && tmp<=102)  {
-                                CToA-=16;
-                            }
+                            ////if (tmp>=97 && tmp<=102)  {
+                            ////    CToA-=16;
+                            ////}
                         }
                      
                         //adjust" : [ 1, 1, 1, 12, 1, 50, 1, 97, 16, 98, 16, 99, 16, 100, 16, 101, 16 ] 
@@ -385,9 +463,9 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                    
                         if (chipnr==3) {
                             int tmp = dcol/2;
-                            if (tmp>=97 && tmp<=101)  {
-                                CToA-=16;
-                            }
+                            ////if (tmp>=97 && tmp<=101)  {
+                            ////    CToA-=16;
+                            ////}
                         } 
                     }
                     
@@ -413,6 +491,29 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                             }                                                        
                     }
                     GToA = GToA + (ro_count-late_hit)*maxGToA;
+
+		    // ToT is known, pixel coordinate (x,y) is known
+                    // chip nr is known
+		    // apply correction based on the test pulse fit 
+                    
+                    /*
+                    Double_t toa_drift = 0;
+                    if (chipnr==0) {
+		         
+                         double tmp_mv = mv_tot(ToT, atot[x][y], btot[x][y], ctot[x][y], ttot[x][y]);
+			 // toa drift in ns
+                         toa_drift = toa_mv (tmp_mv, ctoa[x][y], ttoa[x][y], dtoa[x][y] ); 
+                         //cout << x << " " << y << " " << ToT << " " << toa_drift << endl;	
+                         //GToA = GToA - Long_t( toa_drift/1.5625 + 0.5 );
+                     }   
+
+                     ToAdrift = toa_drift;
+		     */ 
+                    
+
+
+
+		    	
                                  
                     
                     //if (hitcount%10000==0 || hitcount%10000==1) {
@@ -467,7 +568,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                 } // ==> if packet is a pixelhit
                 
             } // next datapacket entry 
-        
+            } //chip selection
             // check for roll overs inside the datapacket
             // if (npixhits>0) cout << "packet " << count << " " << npixhits << ' ' << tmp_min << ' ' << tmp_max << endl;
         
