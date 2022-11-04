@@ -166,6 +166,8 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
 
             chipnr = buffer[4];
 
+            // mode is not used by Serval
+
             int mode = buffer[5];
 
             // 1b 90 00 03 33 58 50 54
@@ -198,7 +200,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
 	    	
 
             for (int i=0; i<pixdatasize; i++) {
-                //cout << hex << ' ' << databuffer[i] << dec << ' ';
+                // cout << hex << ' ' << databuffer[i] << dec << ' ';
                 ULong64_t temp = databuffer[i];
                 
                 spidrTime = (UShort_t) (temp & 0xffff);
@@ -223,7 +225,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     if (debug) cout << count << ' ' << Form("EndOfCommand on %04x at %5d",chipID, spidrTime) << endl;
                 }
                 
-                if (h4==0x71b0) {
+                if (h4==0x71b0 || h4==0x71a0 ) {
                     int chipID = (int) (temp >> 16) & 0xffff;
                     if (debug) cout << count << ' ' << Form("EndOfReadOut on %04x at %5d",chipID, spidrTime) << endl;
                     if (debug) cout << (int)chipnr << ' ' << chipcount[chipnr] << endl;
@@ -321,7 +323,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     
                 }
                 
-                if (h2==0xb && hitcount < maxhits) {
+                if ( (h2==0xb || h2 == 0xa) && hitcount < maxhits) {
                     
                     if (hitcount%1000000==0) cout << "hit: " << hitcount << endl;
                     hitcount++;
