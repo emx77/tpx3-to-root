@@ -87,11 +87,11 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
     UInt_t tdc_nr;
     
     TTree *ttdc = new TTree("ttrig","");
-   	ttdc->Branch("ts",&tdc_ts,"ts/D");
+    ttdc->Branch("chipnr",&chipnr,"chipnr/b"); 
+    ttdc->Branch("ts",&tdc_ts,"ts/D");
     ttdc->Branch("type",&tdc_type,"type/b");
     ttdc->Branch("nr",&tdc_nr,"nr/i"); 
-    
-    
+     
     const int hl=8; // length of header packet
     UChar_t *buffer = new UChar_t[hl];   
     const int dl=9000; // max length of data packet 
@@ -114,12 +114,12 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
     unsigned long hitcount=0;
         
     // counts per chip
-    long chipcount[4];
+    long chipcount[8];
         
     // frame counter per chip
-    int frame[4];
+    int frame[8];
         
-    for (int i=0;i<4;i++) {
+    for (int i=0;i<8;i++) {
         chipcount[i]=0;
         frame[i]=0;
     }
@@ -271,31 +271,49 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     trigcnt = (int) (temp>>44) & 0xfff;   
                     tdc_nr = trigcnt;
                     
-                    
-                    prev_tdc_time = tdc_time;
+                    // for now use chip0 to determine roll over
+                    if (chipnr==0) { prev_tdc_time = tdc_time; }
                     
 		    // 32 bits 
                     long coarsetime = temp>>12 & 0xFFFFFFFF;	
                     
                     //cout << coarsetime*25e-9 << endl;
                     int tmpfine = (temp >> 5 ) & 0xF;   // 12 phases of 320 MHz clock in bits 5 to 8
-                    tmpfine = ((tmpfine-1) << 9) / 12;     // subtract 1 (as fractions 0 to 11 are numbered 1 to 12), then shift by 9 positions to reduce the error coming from the integer division by 12 
-                    int trigtime_fine = (temp & 0x0000000000000E00) | (tmpfine & 0x00000000000001FF);   // combine the 3 bits with a size of 3.125 ns with the rest of the fine time from the 12 clock phases
-                    double time_unit=25./4096;
-                    tdc_time = ((double)coarsetime*25E-9 + trigtime_fine*time_unit*1E-9);
-                    //if (count<20) { 
-                    //    cout << count << ' ' << trigcnt << ' ' << hex << temp << dec << endl; 
-                    //    cout << "tdc_chan: " << tdc_chan << " edge_type: " << edge_type << " tdc_time: " << setprecision(15) <<  tdc_time << endl;
-                    //}
-                    
-                    //tdc_time-=2.*TMath::Power(2,34)*1.5625e-9;
-                    
-                    if (tdc_time<prev_tdc_time) {
-                        ro_tdc_count+=1;
+                    if (tmpfine ==0 || tmpfine>12) {
+                      cout << "skip tdc time stamp, invalid tdc fine timestamp: " << tmpfine << " " << (int) tdc_type  << endl; 
                     }
+                    else { 
+                      tmpfine = ((tmpfine-1) << 9) / 12;     // subtract 1 (as fractions 0 to 11 are numbered 1 to 12), then shift by 9 positions to reduce the error coming from the integer division by 12 
+                      int trigtime_fine = (temp & 0x0000000000000E00) | (tmpfine & 0x00000000000001FF);   // combine the 3 bits with a size of 3.125 ns with the rest of the fine time from the 12 clock phases
+                      double time_unit=25./4096;
+                      tdc_time = ((double)coarsetime*25E-9 + trigtime_fine*time_unit*1E-9);
+                      //if (count<2) { 
+                      //    cout << count << ' ' << trigcnt << ' ' << hex << temp << dec << endl; 
+                      //    cout << "tdc_chan: " << tdc_chan << " edge_type: " << edge_type << " tdc_time: " << setprecision(15) <<  tdc_time << endl;
+                      //}
                     
-                    tdc_ts = tdc_time+(ro_tdc_count)*maxTDC;
-                    ttdc->Fill();
+                      //tdc_time-=2.*TMath::Power(2,34)*1.5625e-9;
+                    
+
+                      // this roll over detection is very basic and can fail if channel 1 and channel 2 are not synchyronized. 
+                      // for now chip0 is the reference for roll over. 
+
+                      if ( (chipnr==0) && tdc_time<prev_tdc_time) {
+                          ro_tdc_count+=1;
+                      }
+
+                      if (count<2) { 
+                          cout << "hitcount: " << hitcount << " count : " << count << ' ' << trigcnt << ' ' << hex << temp << dec << " " << ro_tdc_count << " " << tmpfine << endl; 
+                          cout << "chipnr:" << (int) chipnr << " tdc_chan: " << tdc_chan << " edge_type: " << edge_type << " tdc_time: " << setprecision(15) <<  tdc_time << endl;
+                      }
+                    
+                      //ro_tdc_count=0;  			
+                      tdc_ts = tdc_time+(ro_tdc_count)*maxTDC;
+
+                      if (hitcount>0) {                       
+                        ttdc->Fill();
+                      }
+                    } // good tdcfine
                 }
                 if (h2==0x4) { 
                     
@@ -318,7 +336,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                         //else { 
                         //  Timer_MSB16 = Timer_MSB16 - diff;
                         //}
-                        cout << "Global time:  " << setprecision(15) << timemaster *25e-9 << endl; //converted Global timestamp
+                        cout << "Global time:  " << setprecision(15) << timemaster *25e-9 << " Chipnr: " << (int) chipnr << endl; //converted Global timestamp
                     }
                     
                 }
@@ -359,7 +377,9 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     
                         if (chipnr==0) {
                             int tmp = dcol/2;
-                            if (tmp==93 || (tmp>=97 && tmp<=101) ) {
+                            //if (tmp==93 || (tmp>=97 && tmp<=101) ) {
+                                if (tmp>=97 && tmp<=100) { // ORNL
+  
                                 CToA-=16;
                             }
                         }
@@ -377,7 +397,8 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     
                         if (chipnr==2) {
                             int tmp = dcol/2;
-                            if (tmp>=97 && tmp<=102)  {
+                            //if (tmp>=97 && tmp<=102)  {
+                            if (tmp==93 || (tmp>=97 && tmp<=101))  {  // ORNL
                                 CToA-=16;
                             }
                         }
@@ -460,7 +481,30 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     if (chipnr==3) {
                         xpix=x;
                         ypix=y;
+                    } 
+
+                    if (chipnr==4) {
+                        //xpix=x+260;
+                        xpix=767-x+nInterPix;
+                        ypix=511+nInterPix-y; 
                     }
+                    if (chipnr==5) {
+                        //xpix=255-x+260;
+                        //ypix=255-y+260;
+                        xpix=512+nInterPix+x;
+                        ypix=y;
+                    }
+                    if (chipnr==6) {
+                        xpix=768+2*nInterPix+x;
+                        //ypix=255-y+260;
+                        ypix=y;
+                    }
+                    if (chipnr==7) {
+                        xpix=1023+2*nInterPix-x;
+                        ypix=511+nInterPix-y;
+                    }
+
+
                     
                     //h2quad->Fill(xpix,ypix);
                     

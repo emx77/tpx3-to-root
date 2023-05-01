@@ -39,9 +39,11 @@ int tpx3_clusters(string filename, long nhits=-1) {
    double *tdc;
    
    
-   // select rising edge TDCs
+   
    ttdc->SetEstimate(-1);
-   ttdc->Draw("ts","type==0||type==2","goff");
+   //ttdc->Draw("ts","type==0||type==2","goff");
+   // select rising edge TDCs, from TDC chan0, ignoring chip nr for now
+   ttdc->Draw("ts","type==0","goff");
    tdc = ttdc->GetV1();
    if (ntrig>0) cout << tdc[0] << ' ' << endl;
    
