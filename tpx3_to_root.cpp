@@ -15,7 +15,7 @@
 
 using namespace std;
 
-int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
+int tpx3_to_root(string filename, ULong64_t nrawpixelhits=0) {
 
     int debug = 0;
     
@@ -65,7 +65,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
     UInt_t framenr;
    
     Int_t CToA;
-    Long_t GToA;
+    Long64_t GToA;
 
     t2->Branch("framenr",&framenr,"framenr/i");
     t2->Branch("chipnr",&chipnr,"chipnr/b");
@@ -95,26 +95,26 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
     const int hl=8; // length of header packet
     UChar_t *buffer = new UChar_t[hl];   
     const int dl=9000; // max length of data packet 
-    unsigned long *databuffer = new unsigned long[dl];
+    ULong64_t *databuffer = new ULong64_t[dl];
 
     int nheaders= 10000000;
-    unsigned long maxhits =2000000000;
+    ULong64_t maxhits =2000000000;
     if (nrawpixelhits!=0) maxhits=nrawpixelhits;
 
-    unsigned long Timer_LSB32 = 0;
-    unsigned long Timer_MSB16 = 0;
-    unsigned long long timemaster = 0;
+    ULong64_t Timer_LSB32 = 0;
+    ULong64_t Timer_MSB16 = 0;
+    ULong64_t timemaster = 0;
         
     // loop over the headers in the file
         
     // number of data packets
-    long count=0;
+    ULong64_t count=0;
         
     //number of pixel hits 
-    unsigned long hitcount=0;
+    ULong64_t hitcount=0;
         
     // counts per chip
-    long chipcount[8];
+    ULong64_t chipcount[8];
         
     // frame counter per chip
     int frame[8];
@@ -128,10 +128,10 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
     int trigcnt = -1;
     double prev_tdc_time = -1;
     
-    unsigned long tdc_1r = 0;
-    unsigned long tdc_1f = 0;
-    unsigned long tdc_2r = 0;
-    unsigned long tdc_2f = 0;  
+    ULong64_t tdc_1r = 0;
+    ULong64_t tdc_1f = 0;
+    ULong64_t tdc_2r = 0;
+    ULong64_t tdc_2f = 0;  
 
     double maxTDC = 3.125E-9*TMath::Power(2,35);
     int ro_tdc_count = 0;   
@@ -141,7 +141,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
 	// variables for roll over detection and correction
     int ro_count=0;
     int ro_state=0;
-    long maxGToA = TMath::Power(2,34);
+    ULong64_t maxGToA = TMath::Power(2,34);
     int late_hit=0;
     
     for (int ifile=0; ifile<nfiles; ifile++) { 
@@ -275,7 +275,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     if (chipnr==0) { prev_tdc_time = tdc_time; }
                     
 		    // 32 bits 
-                    long coarsetime = temp>>12 & 0xFFFFFFFF;	
+                    ULong64_t coarsetime = temp>>12 & 0xFFFFFFFF;	
                     
                     //cout << coarsetime*25e-9 << endl;
                     int tmpfine = (temp >> 5 ) & 0xF;   // 12 phases of 320 MHz clock in bits 5 to 8
@@ -350,11 +350,11 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     
                     // data driven pixel data
                     // doublecolumn * 2
-                    long dcol = (temp & 0x0FE0000000000000L) >> 52; //(16+28+9-1)
+                    ULong64_t dcol = (temp & 0x0FE0000000000000L) >> 52; //(16+28+9-1)
                     // superpixel * 4
-                    long spix = (temp & 0x001F800000000000L) >> 45; //(16+28+3-2)
+                    ULong64_t spix = (temp & 0x001F800000000000L) >> 45; //(16+28+3-2)
                     // pixel
-                    long pix = (temp & 0x0000700000000000L) >> 44; //(16+28)
+                    ULong64_t pix = (temp & 0x0000700000000000L) >> 44; //(16+28)
                     int x = (int) (dcol + pix / 4);
                     int y = (int) (spix + (pix & 0x3));
                     //int yx = y * 256 + x;
@@ -414,7 +414,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                         } 
                     }
                     
-                    GToA = ((Long_t(spidrTime)) << 18 ) + Long_t(CToA);
+                    GToA = ((Long64_t(spidrTime)) << 18 ) + Long64_t(CToA);
                     late_hit = 0;
                     if (1.0*GToA>0.95*maxGToA && ro_state==0) { 
                          ro_state=1;
