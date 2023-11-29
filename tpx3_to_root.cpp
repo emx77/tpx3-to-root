@@ -227,8 +227,11 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                 
                 if (h4==0x71b0 || h4==0x71a0 ) {
                     int chipID = (int) (temp >> 16) & 0xffff;
-                    if (debug) cout << count << ' ' << Form("EndOfReadOut on %04x at %5d",chipID, spidrTime) << endl;
-                    if (debug) cout << (int)chipnr << ' ' << chipcount[chipnr] << endl;
+                    //if (debug) 
+                    cout << count << ' ' << Form("EndOfReadOut on %04x at %5d",chipID, spidrTime) << endl;
+                    //if (debug)
+                    cout << (int)chipnr << ' ' << chipcount[chipnr] << endl;
+                    cout << hitcount << ' ' << count << endl; 
                     chipcount[chipnr] = 0;
                     frame[chipnr]++;
                 }
@@ -287,10 +290,10 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                       int trigtime_fine = (temp & 0x0000000000000E00) | (tmpfine & 0x00000000000001FF);   // combine the 3 bits with a size of 3.125 ns with the rest of the fine time from the 12 clock phases
                       double time_unit=25./4096;
                       tdc_time = ((double)coarsetime*25E-9 + trigtime_fine*time_unit*1E-9);
-                      //if (count<2) { 
-                      //    cout << count << ' ' << trigcnt << ' ' << hex << temp << dec << endl; 
-                      //    cout << "tdc_chan: " << tdc_chan << " edge_type: " << edge_type << " tdc_time: " << setprecision(15) <<  tdc_time << endl;
-                      //}
+                      if (count<20) { 
+                            cout << count << ' ' << trigcnt << ' ' << hex << temp << dec << endl; 
+                            cout << "tdc_chan: " << tdc_chan << " edge_type: " << edge_type << " tdc_time: " << setprecision(15) <<  tdc_time << endl;
+                      }
                     
                       //tdc_time-=2.*TMath::Power(2,34)*1.5625e-9;
                     
@@ -302,17 +305,17 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                           ro_tdc_count+=1;
                       }
 
-                      if (count<2) { 
+                      if (count<20) { 
                           cout << "hitcount: " << hitcount << " count : " << count << ' ' << trigcnt << ' ' << hex << temp << dec << " " << ro_tdc_count << " " << tmpfine << endl; 
                           cout << "chipnr:" << (int) chipnr << " tdc_chan: " << tdc_chan << " edge_type: " << edge_type << " tdc_time: " << setprecision(15) <<  tdc_time << endl;
                       }
                     
-                      //ro_tdc_count=0;  			
+                      ro_tdc_count=0;  			
                       tdc_ts = tdc_time+(ro_tdc_count)*maxTDC;
 
-                      if (hitcount>0) {                       
+                      //if (hitcount>0 && framenr>0) {                       
                         ttdc->Fill();
-                      }
+                      //}
                     } // good tdcfine
                 }
                 if (h2==0x4) { 
@@ -377,8 +380,10 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     
                         if (chipnr==0) {
                             int tmp = dcol/2;
-                            //if (tmp==93 || (tmp>=97 && tmp<=101) ) {
-                                if (tmp>=97 && tmp<=100) { // ORNL
+                            //if (tmp==93 || (tmp>=97 && tmp<=102) ) {
+                            if (tmp>=97 && tmp<=101)  { // cameca
+                              
+                                //if (tmp>=97 && tmp<=100) { // ORNL
   
                                 CToA-=16;
                             }
@@ -435,6 +440,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                                 //cout << "ro0 ";
                             }                                                        
                     }
+ 
                     GToA = GToA + (ro_count-late_hit)*maxGToA;
                                  
                     
@@ -508,7 +514,9 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     
                     //h2quad->Fill(xpix,ypix);
                     
-                    t2->Fill();
+                    //if (framenr>0) {
+                       t2->Fill();
+                    //} 
                       
                 } // ==> if packet is a pixelhit
                 
