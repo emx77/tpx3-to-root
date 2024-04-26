@@ -5,12 +5,27 @@
 #include "TROOT.h"
 #include "TH1F.h"
 #include "TH2F.h"
+#include "TFile.h"
+#include "TTree.h"
 
 using namespace std;
 
 int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
 
     gROOT->Reset();
+
+    ifstream infi(filename.c_str(), ifstream::binary);
+
+    if (!infi) {
+        cout << " file: " << filename << " not found." << endl;
+        return 1; 
+    }
+
+    int pos = filename.rfind('.');
+    string ofile = filename.substr(0,pos+1)+"root";
+    cout << " output file = " << ofile << endl;
+    TFile *f = new TFile(ofile.c_str(),"recreate");
+
 
     TH1F *h1 = new TH1F("h1","eoc",256,0,256);  
     TH1F *h1eoc2 = new TH1F("h1eoc2","eoc2",256,0,256);  
@@ -29,13 +44,23 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
     TH2F *h2tot = new TH2F("h2tot","xytot",448,0,448,512,0,512);
     TH2F *h2toa = new TH2F("h2toa","xytoa",448,0,448,512,0,512);
 
-          
-    ifstream infi(filename.c_str(), ifstream::binary);
+    UShort_t Col, Row;
+    UInt_t ToT, ToA;
 
-    if (!infi) {
-        cout << " file: " << filename << " not found." << endl;
-        return 1; 
-    }
+    TTree *t2 = new TTree("t2",""); 
+    //t2->Branch("framenr",&framenr,"framenr/i");
+    //t2->Branch("chipnr",&chipnr,"chipnr/b");
+    t2->Branch("xpix",&Col,"xpix/s");
+    t2->Branch("ypix",&Row,"ypix/s");
+    t2->Branch("ToT",&ToT,"ToT/s");
+    t2->Branch("ToA",&ToA,"ToA/s");
+    //t2->Branch("FToA",&FToA,"FtoA/b");
+    // CToA now obsolete because of glocal ToA which inlcudes the spidrTime rollovers
+    // roll over detection requires at least one pixelhit every ~ 3s. 
+    // t2->Branch("CToA",&CToA,"CToA/I");  
+    //t2->Branch("GToA",&GToA,"GToA/L");
+    //t2->Branch("SpidrTime",&spidrTime,"SpidrTime/s");      
+
 
     infi.seekg (0, infi.end);
     ULong64_t infi_length = infi.tellg();
@@ -84,11 +109,14 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
             continue;
         } 
 
+        // there are additional packets with high eoc values;
+        if (eoc>223) continue;
+
         //if (s.Contains("TPX4")) {
         //    cout << dec << g << ' ' << hex << *data_packet << " (TPX4 packet) " << endl;
         //}
 
-        uint16_t ToA = (*data_packet>>30) & 0xFFFF;
+        ToA = (*data_packet>>30) & 0xFFFF;
         // grey to binary count conversion
         uint16_t temp = ToA;
         uint16_t inv = 0;
@@ -113,10 +141,11 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
           
         //cout << ToA << ' ' << inv << endl;
         //ToA = inv;
-        UInt_t ToT = (*data_packet>>1) & 0x7FF;
+        ToT = (*data_packet>>1) & 0x7FF;
         UInt_t Pileup = (*data_packet) & 0x1;    
    
         ULong64_t addr=(*data_packet>>46) & 0x3ffff;
+
         UInt_t Pix=addr&0x1F;
         UInt_t Sp=(addr>>5)&0xF;
         UInt_t EoC=(addr>>9)&0xFF;
@@ -126,13 +155,16 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
             Sp=15-Sp;
             Pix=31-Pix;
         }
-        UInt_t Col=2*EoC + (int)(Pix%8/4);
-        UInt_t Row=Pix%4 + (int)(Pix/8)*4 + Sp*16 + Top*256;
+        Col = (UShort_t) (2*EoC + (Int_t)(Pix%8/4));
+        Row = (UShort_t) (Pix%4 + (Int_t)(Pix/8)*4 + Sp*16 + Top*256);
 
 
         if (eoc>223) { 
             cout << dec << Top << ' ' << g << ' ' << hex << *data_packet << dec << " eoc " << eoc << ' ' <<  endl;
-            //cout << dec << g << ' ' << hex << *data_packet << dec << ' ' << eoc << ' '<< Col << ' ' << Row << ' ' << ToA << ' ' << ToT << ' ' << Pileup << endl;
+            if (Row>447) {
+              cout << dec << g << ' ' << hex << *data_packet << dec << ' ' << eoc << ' '<< Col << ' ' << Row << ' ' << ToA << ' ' << ToT << ' ' << Pileup << endl;
+              cout << Top << ' ' << EoC << ' ' << Sp << ' ' << Pix << endl; 
+            } 
         }
         //cout << "    " << Top << ' ' << ToA << endl;    
         
@@ -158,11 +190,36 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
         h1ufToA_stop->Fill(ufToA_stop);
         h1fToA_rise->Fill(fToA_rise);
         h1fToA_fall->Fill(fToA_fall);
+
+        t2->Fill();
      
         npixelhits++;
     }  
     cout << g << '/' << infi_length << endl;    
     cout << npixelhits << ' ' << ntimestamps << ' ' << ntpx4markers << endl;
+
+
+    h1->Write();  
+    h1eoc2->Write();  
+
+    h1tot->Write();  
+    h1toa->Write();  
+    h1pileup->Write();  
+
+    h1ufToA_start->Write();  
+    h1ufToA_stop->Write();  
+    
+    h1fToA_rise->Write();  
+    h1fToA_fall->Write();  
+   
+    h2->Write();
+    h2tot->Write();
+    h2toa->Write();
+
+    t2->Write();
+
+    // close .root file
+    f->Close();
 
     return 0;
 }
