@@ -185,6 +185,9 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
                 UInt_t Sp=(addr>>5)&0xF;
                 UInt_t EoC=(addr>>9)&0xFF;
                 UInt_t Top=(addr>>17)&0x1;
+
+                h1eoc2->Fill(EoC); 
+
                 if (Top) {
                     EoC = 223-EoC;
                     Sp=15-Sp;
@@ -209,10 +212,38 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
                 UInt_t fToA_rise   = (*data_packet>>17) & 0x1F;
                 UInt_t fToA_fall   = (*data_packet>>12) & 0x1F;
 
-                // uftoa_list = [15, 14, 12, 8, 0, 1, 3, 7]
+                UInt_t uftoa_list[8] = {15, 14, 12, 8, 0, 1, 3, 7};
+                UInt_t j=0; 
+                while (j<8) {
+                    if (uftoa_list[j]==ufToA_start) {
+                        ufToA_start = j;
+                        break;
+                    } 
+                    j++;
+                    if (j==8) cout << " wrong ufToA_start value: " << ufToA_start << endl; 
+                } 
+                j=0;
+                while (j<8) {
+                    if (uftoa_list[j]==ufToA_stop) {
+                        ufToA_stop = j;
+                        break;
+                    } 
+                    j++;
+                    if (j==8) cout << " wrong ufToA_stop value: " << ufToA_stop << endl; 
+                } 
+
+
+
+                
+                // UInt_t ratio_VCO_CKDLL=16;
+
+
+
+                // Double_t toa =  
+
                 // return (uftoa_list.index(uftoa))
 
-                h1eoc2->Fill(eoc); 
+                
 
                 h2->Fill(Col,Row,1);
                 h2tot->Fill(Col,Row,ToT);
@@ -235,7 +266,7 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
             cout << npixelhits << ' ' << ntimestamps << ' ' << ntpx4markers << endl;
         }
     }
-    cout << npixelhits << ' ' << ntimestamps << ' ' << ntpx4markers << endl;
+    cout << "npixelhits: " << npixelhits << " ntimestamps: " << ntimestamps << " ntpx4markers: " << ntpx4markers << endl;
 
     h1->Write();  
     h1eoc2->Write();  
