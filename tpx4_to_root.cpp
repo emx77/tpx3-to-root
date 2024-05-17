@@ -49,6 +49,8 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
     cout << " output file = " << ofile << endl;
     TFile *f = new TFile(ofile.c_str(),"recreate");
 
+    // TH1F *h1hb = new TH1F("h1hb","h1hb",11000,-0.5,10.5);  
+
 
     TH1F *h1 = new TH1F("h1","eoc",256,0,256);  
     TH1F *h1eoc2 = new TH1F("h1eoc2","eoc2",256,0,256);  
@@ -67,8 +69,12 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
     TH2F *h2tot = new TH2F("h2tot","xytot",448,0,448,512,0,512);
     TH2F *h2toa = new TH2F("h2toa","xytoa",448,0,448,512,0,512);
 
+
     UShort_t Col, Row;
     UInt_t ToT, ToA;
+    UChar_t Pileup;
+    UChar_t fToA_rise, fToA_fall; 
+    UChar_t ufToA_start, ufToA_stop;
 
     TTree *t2 = new TTree("t2",""); 
     //t2->Branch("framenr",&framenr,"framenr/i");
@@ -77,6 +83,13 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
     t2->Branch("ypix",&Row,"ypix/s");
     t2->Branch("ToT",&ToT,"ToT/s");
     t2->Branch("ToA",&ToA,"ToA/s");
+    t2->Branch("Pilepup",&Pileup,"Pileup/b");
+    t2->Branch("fToA_rise",&fToA_rise,"fToA_rise/b");
+    t2->Branch("fToA_fall",&fToA_fall,"fToA_fall/b");
+
+    t2->Branch("ufToA_start",&ufToA_start,"ufToA_start/b");
+    t2->Branch("ufToA_stop",&ufToA_stop,"ufToA_stop/b");
+    
     //t2->Branch("FToA",&FToA,"FtoA/b");
     // CToA now obsolete because of glocal ToA which inlcudes the spidrTime rollovers
     // roll over detection requires at least one pixelhit every ~ 3s. 
@@ -131,7 +144,8 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
                     ntimestamps++;
                     hb_packet = *data_packet;
                     ULong64_t heartbeat = (*data_packet & 0xFFFFFFFFFFFF);
-                    //cout << top << ' ' << heartbeat << ' ' << heartbeat*25e-9 <<  endl;
+                    //cout << ntimestamps << ' ' << heartbeat << ' ' << heartbeat*25e-9 <<  endl;
+                    //h1hb->Fill(heartbeat*25e-9);
                     continue;  
                 }
         
@@ -174,10 +188,10 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
                 //val ^= val >> 1;
                 //ToA=val;
           
-                //cout << ToA << ' ' << inv << endl;
+                // cout << ToA << endl;
                 //ToA = inv;
                 ToT = (*data_packet>>1) & 0x7FF;
-                UInt_t Pileup = (*data_packet) & 0x1;    
+                Pileup = (*data_packet) & 0x1;    
    
                 ULong64_t addr=(*data_packet>>46) & 0x3ffff;
 
@@ -207,10 +221,10 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
             
                 //cout << "    " << Top << ' ' << ToA << endl;    
         
-                UInt_t ufToA_start = (*data_packet>>26) & 0xF;
-                UInt_t ufToA_stop  = (*data_packet>>22) & 0xF;
-                UInt_t fToA_rise   = (*data_packet>>17) & 0x1F;
-                UInt_t fToA_fall   = (*data_packet>>12) & 0x1F;
+                ufToA_start = (*data_packet>>26) & 0xF;
+                ufToA_stop  = (*data_packet>>22) & 0xF;
+                fToA_rise   = (*data_packet>>17) & 0x1F;
+                fToA_fall   = (*data_packet>>12) & 0x1F;
 
                 UInt_t uftoa_list[8] = {15, 14, 12, 8, 0, 1, 3, 7};
                 UInt_t j=0; 
@@ -269,6 +283,7 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
     cout << "npixelhits: " << npixelhits << " ntimestamps: " << ntimestamps << " ntpx4markers: " << ntpx4markers << endl;
 
     h1->Write();  
+    //h1hb->Write();
     h1eoc2->Write();  
 
     h1tot->Write();  
