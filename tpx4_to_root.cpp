@@ -49,7 +49,7 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
     cout << " output file = " << ofile << endl;
     TFile *f = new TFile(ofile.c_str(),"recreate");
 
-    // TH1F *h1hb = new TH1F("h1hb","h1hb",11000,-0.5,10.5);  
+    TH1F *h1hb = new TH1F("h1hb","h1hb",11000,-0.5,10.5);  
 
 
     TH1F *h1 = new TH1F("h1","eoc",256,0,256);  
@@ -70,11 +70,20 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
     TH2F *h2toa = new TH2F("h2toa","xytoa",448,0,448,512,0,512);
 
 
+    UChar_t top; 
+
     UShort_t Col, Row;
     UInt_t ToT, ToA;
     UChar_t Pileup;
     UChar_t fToA_rise, fToA_fall; 
     UChar_t ufToA_start, ufToA_stop;
+
+    ULong64_t heartbeat;
+    ULong64_t last_hb;  
+
+    ULong64_t last_heartbeat_top = 0;   
+    ULong64_t last_heartbeat_bottom = 0;
+      
 
     TTree *t2 = new TTree("t2",""); 
     //t2->Branch("framenr",&framenr,"framenr/i");
@@ -89,6 +98,13 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
 
     t2->Branch("ufToA_start",&ufToA_start,"ufToA_start/b");
     t2->Branch("ufToA_stop",&ufToA_stop,"ufToA_stop/b");
+
+    t2->Branch("last_hb",&last_hb,"last_hb/L"); 
+
+    TTree *hb = new TTree("hb",""); 
+    hb->Branch("hb",&heartbeat,"hb/L"); 
+    hb->Branch("top",&top,"top/b"); 
+     
     
     //t2->Branch("FToA",&FToA,"FtoA/b");
     // CToA now obsolete because of glocal ToA which inlcudes the spidrTime rollovers
@@ -135,7 +151,7 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
                 i++; 
                 g = infi.tellg();
                 UInt_t eoc = ((*data_packet)>>55) & 0xFF;
-                UInt_t top=(*data_packet>>63)&0x1;
+                top=(*data_packet>>63)&0x1;
                 //if (top) { continue; }
 
                 h1->Fill(eoc);
@@ -143,9 +159,12 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
                 if (eoc==0xE0) {
                     ntimestamps++;
                     hb_packet = *data_packet;
-                    ULong64_t heartbeat = (*data_packet & 0xFFFFFFFFFFFF);
-                    //cout << ntimestamps << ' ' << heartbeat << ' ' << heartbeat*25e-9 <<  endl;
-                    //h1hb->Fill(heartbeat*25e-9);
+                    heartbeat = (*data_packet & 0xFFFFFFFFFFFF);
+                    cout << ntimestamps << ' ' << (int)top << ' ' << heartbeat << ' ' << heartbeat*25e-9 <<  endl;
+                    if (top) last_heartbeat_top = heartbeat;
+                    else last_heartbeat_bottom = heartbeat; 
+                    h1hb->Fill(heartbeat*25e-9);
+                    hb->Fill(); 
                     continue;  
                 }
         
@@ -159,7 +178,11 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
                 } 
 
                 // there are additional packets with high eoc values;
-                if (eoc>223) continue;
+                if (eoc>223) {
+                    cout << (int)top << " eoc:" << eoc << ' ' << *data_packet << ' ' << (((*data_packet)>>52) & 0x7) << ' ' << ((*data_packet) &0x7ffffffffffff) << endl; 
+                    continue;
+                } 
+                // 
 
                 //if (s.Contains("TPX4")) {
                 //    cout << dec << g << ' ' << hex << *data_packet << " (TPX4 packet) " << endl;
@@ -219,7 +242,7 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
                     } 
                 } 
             
-                //cout << "    " << Top << ' ' << ToA << endl;    
+                //cout << "    " << Top << ' ' << ToA << ' ' << ToA*25e-9 << endl;    
         
                 ufToA_start = (*data_packet>>26) & 0xF;
                 ufToA_stop  = (*data_packet>>22) & 0xF;
@@ -246,9 +269,12 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
                     if (j==8) cout << " wrong ufToA_stop value: " << ufToA_stop << endl; 
                 } 
 
-
-
+                if (top) last_hb = last_heartbeat_top; 
+                else last_hb = last_heartbeat_bottom;  
                 
+
+                cout << "pixelhit: top " << (int) top << " last hb: "  << last_hb << " ToA "  << ToA << ' ' << endl;  
+
                 // UInt_t ratio_VCO_CKDLL=16;
 
 
@@ -283,7 +309,7 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
     cout << "npixelhits: " << npixelhits << " ntimestamps: " << ntimestamps << " ntpx4markers: " << ntpx4markers << endl;
 
     h1->Write();  
-    //h1hb->Write();
+    h1hb->Write();
     h1eoc2->Write();  
 
     h1tot->Write();  
@@ -301,6 +327,7 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
     h2toa->Write();
 
     t2->Write();
+    hb->Write();
 
     // close .root file
     f->Close();
