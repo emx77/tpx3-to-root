@@ -192,6 +192,15 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
             }
             
             infi.read((char*)databuffer,size);
+
+            // if (count < 450000000 ) {
+	    //	if (count%10000==0) {
+	    //		cout << count << ' ' << "skipping processing " << endl;
+	    //	continue;
+	    //	}	
+	    // }
+
+
             
             // int tmp_max=0;
             // int tmp_min=100000;
@@ -209,16 +218,43 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                 //if (spidrTime<tmp_min) tmp_min=spidrTime;
                
                 //cout << hex << (temp>>56) << dec << ' ';
+
+                int h4 = temp>>48; 
                 
                 int hdr = (int)(temp>>56);
+                // print unknown packets 
+                if (hdr>>4!=0xb && hdr!=0x50 && hdr!=0x5c && hdr!=0x71 && hdr!=0x72 && hdr!=0x44 && hdr!=0x45 && hdr>>4!=6) {
+                    cout << (int) chipnr << ' ' << hex << hdr << ' ' << h4 << dec << endl;
+                } 
+
                 h1->Fill(hdr);
+
+                if (hdr==0x50) {
+                    // packet counter
+                    if (debug) cout << (int) chipnr << " 50 packet count "  << (temp & 0xffffffffffff) << endl;
+                }
+
+                if (hdr==0x5c) {
+                    // heartbeat
+                    cout << (int) chipnr << " 5c heart beat "  << (temp >> 12 & 0x3ffffffff) << ' ' << 25e-9 * (temp >> 12 & 0x3ffffffff) <<  " s "<< endl;
+                }
+
+                 if (hdr==0x5f) {
+                    // open shutter
+                    cout << (int) chipnr << " 5f open shutter "  << (temp >> 12 & 0x3ffffffff) << ' ' << 25e-9 * (temp >> 12 & 0x3ffffffff) <<  " s "<< endl;
+                }
+
+                 if (hdr==0x5a) {
+                    // close shutter
+                    cout << (int) chipnr << " 5a close shutter "  << (temp >> 12 & 0x3ffffffff) << ' ' << 25e-9 * (temp >> 12 & 0x3ffffffff) <<  " s "<< endl;
+                } 
+       
+
                 
                 //cout << hdr << endl;
                 //if (hdr<150) {
                 //  cout << count << ' ' << hex << temp << dec << endl;
                 //}
-                
-                int h4 = temp>>48;
                 
                 if (h4==0x71bf) {
                     int chipID = (int) (temp >> 16) & 0xffff;
@@ -275,7 +311,9 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     if (chipnr==0) { prev_tdc_time = tdc_time; }
                     
 		    // 32 bits 
-                    long coarsetime = temp>>12 & 0xFFFFFFFF;	
+                    // old data without TDC synchronization, truncate 2 highest bits, would need different rollover.       
+                    // long coarsetime = temp>>12 & 0x3FFFFFFF;
+                    long coarsetime = temp>>12 & 0xFFFFFFFF;		
                     
                     //cout << coarsetime*25e-9 << endl;
                     int tmpfine = (temp >> 5 ) & 0xF;   // 12 phases of 320 MHz clock in bits 5 to 8
@@ -287,6 +325,8 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                       int trigtime_fine = (temp & 0x0000000000000E00) | (tmpfine & 0x00000000000001FF);   // combine the 3 bits with a size of 3.125 ns with the rest of the fine time from the 12 clock phases
                       double time_unit=25./4096;
                       tdc_time = ((double)coarsetime*25E-9 + trigtime_fine*time_unit*1E-9);
+                      
+
                       //if (count<2) { 
                       //    cout << count << ' ' << trigcnt << ' ' << hex << temp << dec << endl; 
                       //    cout << "tdc_chan: " << tdc_chan << " edge_type: " << edge_type << " tdc_time: " << setprecision(15) <<  tdc_time << endl;
@@ -336,7 +376,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                         //else { 
                         //  Timer_MSB16 = Timer_MSB16 - diff;
                         //}
-                        cout << "Global time:  " << setprecision(15) << timemaster *25e-9 << " Chipnr: " << (int) chipnr << endl; //converted Global timestamp
+                        if (debug==1) cout << "Global time:  " << setprecision(15) << timemaster *25e-9 << " Chipnr: " << (int) chipnr << endl; //converted Global timestamp
                     }
                     
                 }
@@ -358,7 +398,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     int x = (int) (dcol + pix / 4);
                     int y = (int) (spix + (pix & 0x3));
                     //int yx = y * 256 + x;
-                    if (debug) cout << count << ' ' << hitcount << ' ' << chipnr << ' ' << x << ' ' << y << endl;
+                    //if (debug) cout << count << ' ' << hitcount << ' ' << chipnr << ' ' << x << ' ' << y << endl;
                     framenr=frame[chipnr];
                     
                     ToA  = (UShort_t) ((temp >> (16 + 14)) & 0x3fff);
@@ -370,15 +410,21 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     CToA = (Int_t) (ToA << 4) - FToA;
                     
                     // ToA shift example, can differ from system to system
-                    bool corr_toa_shift=true;
+                    bool corr_toa_shift=false; // false in old data without the T0 reset
                     if (corr_toa_shift) {
-                    // chip 0 U goett
-                    //"adjust" : [ 1, 93, 16, 97, 16, 98, 16, 99, 16, 100, 16, 101, 16, 116, 1, 117, 1 ]
-                    
+
+                        // chip 0 U goett
+                        //"adjust" : [ 1, 93, 16, 97, 16, 98, 16, 99, 16, 100, 16, 101, 16, 116, 1, 117, 1 ]
+
+                        // GoNDT1 Chip 0 TOA corrections for 1 phases: [87, -16, 93, -16, 97, -16, 98, -16, 99, -16, 100, -16, 101, -16, 102, -16]
+
                         if (chipnr==0) {
                             int tmp = dcol/2;
+                            //// if (tmp>=97 && tmp<=101) { // M4I subpixel electron   
                             //if (tmp==93 || (tmp>=97 && tmp<=101) ) {
-                                if (tmp>=97 && tmp<=100) { // ORNL
+                                // if (tmp>=97 && tmp<=102) { // ORNL
+                            // "adjust" : [ 1, 97, -16, 98, -16, 99, -16, 100, -16, 101, -16 ]
+			    if (tmp>=97 && tmp<=101) { // QCAM
   
                                 CToA-=16;
                             }
@@ -388,7 +434,10 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     
                         if (chipnr==1) {
                             int tmp = dcol/2;
-                            if (tmp>=97 && tmp<=101)  {
+                            //// if ((tmp>=97 && tmp<=102) || tmp==93)  { // M4I subpixel electron
+                            
+                            // "adjust" : [ 1, 9, 9, 26, 9, 92, -16, 93, -16, 95, -16, 97, -16, 98, -16, 99, -16, 100, -16, 101, -16, 102, -16 ]  //QCAM
+                            if ( tmp==92 || tmp==93 || tmp==93 || tmp==95 || (tmp>=97 && tmp<=102) )  { //QCAM   
                                 CToA-=16;
                             }
                         }
@@ -397,8 +446,12 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     
                         if (chipnr==2) {
                             int tmp = dcol/2;
-                            //if (tmp>=97 && tmp<=102)  {
-                            if (tmp==93 || (tmp>=97 && tmp<=101))  {  // ORNL
+                            //// if (tmp>=97 && tmp<=101)  { // M4I subpixel electron
+                            //if (tmp==93 || (tmp>=97 && tmp<=101))  {  // ORNL
+                            // if (tmp>=97 && tmp<=101)  {  // GoNDT 1
+                            // "adjust" : [ 1, 16, 9, 25, 9, 26, 9, 32, 9, 43, 9, 73, 9, 76, 9, 79, 9, 80, 9, 87, -16, 89, 9, 91, -16, 92, 9, 93, -16, 97, -16, 98, -16, 99, -16, 100, -16, 101, -16, 102, -16, 105, 9, 110, 9, 120, 9, 121, 9, 122, 9, 123, 9, 124, 9, 125, 9, 126, 9, 127, 9 ] // QCAM 
+                            if (tmp==87 || tmp==91 || tmp==93 || (tmp>=97 && tmp<=102) ) { // QCAM 
+                             
                                 CToA-=16;
                             }
                         }
@@ -408,7 +461,9 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                    
                         if (chipnr==3) {
                             int tmp = dcol/2;
-                            if (tmp>=97 && tmp<=101)  {
+                            //// if (tmp>=97 && tmp<=101)  { // M4I subpixel electron
+                            //  "adjust" : [ 1, 87, -16, 91, -16, 93, -16, 97, -16, 98, -16, 99, -16, 100, -16, 101, -16, 103, -16 ] // QCAM 
+                            if (tmp==87 || tmp==91 || tmp==93 || (tmp>=97 && tmp<=103) )  { // QCAM 
                                 CToA-=16;
                             }
                         } 
