@@ -224,7 +224,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                 
                 int hdr = (int)(temp>>56);
                 // print unknown packets 
-                if (hdr>>4!=0xb && hdr!=0x50 && hdr!=0x5c && hdr!=0x71 && hdr!=0x72 && hdr!=0x44 && hdr!=0x45 && hdr>>4!=6) {
+                if (hdr>>4!=0xb && hdr!=0x50 && hdr!=0x5c && hdr!=0x71 && hdr!=0x72 && hdr!=0x44 && hdr!=0x45 && hdr>>4!=6 && hdr!=0x51) {
                     cout << (int) chipnr << ' ' << hex << hdr << ' ' << h4 << dec << endl;
                 } 
 
@@ -249,7 +249,10 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     // close shutter
                     cout << (int) chipnr << " 5a close shutter "  << (temp >> 12 & 0x3ffffffff) << ' ' << 25e-9 * (temp >> 12 & 0x3ffffffff) <<  " s "<< endl;
                 } 
-       
+                 if (hdr==0x51) {
+                    // min max timestamp
+                    cout << (int) chipnr << " 51 min_max_timestamp "  << (temp >> 12 & 0x3ffffffff) << ' ' << 25e-9 * (temp >> 4 & 0x3ffffffff) <<  " s " << "header counter:  " << count << " pixdatacounter: "  << i << endl;
+                } 
 
                 
                 //cout << hdr << endl;
@@ -415,7 +418,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     CToA = (Int_t) (ToA << 4) - FToA;
                     
                     // ToA shift example, can differ from system to system
-                    bool corr_toa_shift=true; // false in old data without the T0 reset
+                    bool corr_toa_shift=false; // false in old data without the T0 reset
                     if (corr_toa_shift) {
 
                         // chip 0 U goett
@@ -433,7 +436,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
 			    //if (tmp>=97 && tmp<=101) { // QCAM
   
                             //    CToA-=16;
-                            if (tmp>=97 && tmp<=101) { // SW test
+                            if (tmp>=97 && tmp<=102) { // SW test
   
                                 CToA-=16;
 				//ToT = ToT + 1;											 
