@@ -43,9 +43,13 @@ int tpx3_clusters(string filename, long nhits=-1) {
    ttdc->SetEstimate(-1);
    //ttdc->Draw("ts","type==0||type==2","goff");
    // select rising edge TDCs, from TDC chan0, ignoring chip nr for now
-   ttdc->Draw("ts","type==0","goff");
+   ttdc->Draw("ts","chipnr==0","goff");
    tdc = ttdc->GetV1();
-   if (ntrig>0) cout << tdc[0] << ' ' << endl;
+   if (ntrig>1) {
+     cout << tdc[0] << ' ' << endl;
+     // cout << tdc[1] << ' ' << endl;
+     // cout << tdc[2] << ' ' << endl;
+   }  
    
    const Int_t kMaxPixel=5000; // maximum allowed cluster size
    Int_t npix;
@@ -59,6 +63,8 @@ int tpx3_clusters(string filename, long nhits=-1) {
    //Int_t dtpix[kMaxPixel];
    //Int_t tmin;
    Double_t tof[kMaxPixel];
+   Double_t t0[kMaxPixel];
+
    
    TFile *clFile = new TFile(ofile.c_str(),"recreate");
    TTree *tcl = new TTree("tcl","Cluster data tree");
@@ -74,6 +80,7 @@ int tpx3_clusters(string filename, long nhits=-1) {
    //tcl->Branch("tmin",&tmin,"tmin/I");
    //tcl->Branch("dtpix",dtpix,"dtpix/I");
    //tcl->Branch("dt",&dt,"dt/I");
+   tcl->Branch("t0",t0,"t0[n]/D");
       
    int stepsize=16384;
    //int nsteps=(nentries/stepsize)+1;
@@ -158,7 +165,9 @@ int tpx3_clusters(string filename, long nhits=-1) {
 	   //etot+=epix[npix];
             if (ntrig>0) {
                 // calculate ToF only when TDC timestamps are available
-                tof[npix] = (Double_t) (t[j]*1.5625E-9 - t0find(ntrig, tdc, t[j]*1.5625E-9) ) ;
+                double t0_tmp = t0find(ntrig, tdc, t[j]*1.5625E-9);
+                tof[npix] = (Double_t) ( t[j]*1.5625E-9 - t0_tmp ) ;
+                t0[npix] = t0_tmp;
                 //cout << setprecision(15) <<  tof[npix] << ' ' << t[j]*1.5625E-9 << ' ' << xpix[npix] << ' ' << ypix[npix] << endl; 
             }
                 npix++;
@@ -190,7 +199,7 @@ int tpx3_clusters(string filename, long nhits=-1) {
   return 0;
 }
 
-// cluster finding function
+// cluster finding function 0 - 255 256 257 258 - 513 514 515 516 - 781 782 783 784 -  1029
 int clfind(int ihit, int clusid, int nsubset,
 	   double *x, double *y, double *t, int *clusnr) {
   

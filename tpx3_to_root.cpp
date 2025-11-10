@@ -251,7 +251,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                 } 
                  if (hdr==0x51) {
                     // min max timestamp
-                    cout << (int) chipnr << " 51 min_max_timestamp "  << (temp >> 12 & 0x3ffffffff) << ' ' << 25e-9 * (temp >> 4 & 0x3ffffffff) <<  " s " << "header counter:  " << count << " pixdatacounter: "  << i << endl;
+                    // cout << (int) chipnr << " 51 min_max_timestamp "  << (temp >> 12 & 0x3ffffffff) << ' ' << 25e-9 * (temp >> 4 & 0x3ffffffff) <<  " s " << "header counter:  " << count << " pixdatacounter: "  << i << endl;
                 } 
 
                 
@@ -418,8 +418,72 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     CToA = (Int_t) (ToA << 4) - FToA;
                     
                     // ToA shift example, can differ from system to system
-                    bool corr_toa_shift=false; // false in old data without the T0 reset
+                    bool corr_toa_shift = true; // false in old data without the T0 reset
                     if (corr_toa_shift) {
+                      
+                        int tmp = dcol/2;
+
+                        bool fr2x4 = true;
+    
+    /*  Affected double columns for chip 0: [87, 91, 93, 96, 97, 98, 99, 100, 101, 102, 103]
+    Affected double columns for chip 1: [87, 91, 93, 96, 97, 98, 99, 100, 101, 102, 103, 114]
+    Affected double columns for chip 2: [91, 93, 97, 98, 99, 100, 101, 102, 103]
+    Affected double columns for chip 3: [97, 98, 99, 100, 101]
+    Affected double columns for chip 4: [87, 91, 93, 96, 97, 98, 99, 100, 101, 102]
+    Affected double columns for chip 5: [93, 97, 98, 99, 100, 101]
+    Affected double columns for chip 6: [91, 93, 96, 97, 98, 99, 100, 101, 102]
+    Affected double columns for chip 7: [87, 91, 93, 97, 98, 99, 100, 101, 102, 103] */
+
+                        if  (fr2x4) {
+                            switch(chipnr) {
+                                case 0:
+                                    if ( tmp==87 || tmp==91 || tmp==93 || (tmp>=96 && tmp<=103) ||  tmp==114 ) {
+                                        CToA-=16;
+				                    }
+                                    break;
+                                case 1:
+                                    if ( tmp==87 || tmp==91 || tmp==93 || (tmp>=96 && tmp<=103) || tmp==114 ) {
+                                        CToA-=16;
+				                    }
+                                    break;
+                                case 2:
+                                    if ( tmp>=97 && tmp<=102 ) {
+                                        CToA-=16;
+				                    }
+                                    break;
+                                case 3:
+                                    if ( tmp>=97 && tmp<=101 ) {
+                                        CToA-=16;
+				                    }
+                                    break;
+                                case 4:
+                                     if ( tmp==87 || tmp==91 || tmp==93 || (tmp>=96 && tmp<=103) || tmp==114 ) {
+                                        CToA-=16;
+				                    }
+                                    break;
+                                case 5:
+                                     if (tmp>=96 && tmp<=101) {
+                                        CToA-=16;
+				                    }
+                                    break;
+                                case 6:
+                                    if ( tmp==87 ||tmp==91 || tmp==93 || (tmp>=96 && tmp<=102) ) {
+                                        CToA-=16;
+				                    }
+                                    break;
+                                case 7:
+                                    if ( tmp==87 || tmp==91 || tmp==93 || (tmp>=96 && tmp<=103) ) {
+                                        CToA-=16;
+				                    }                              
+                                    break;
+                                default:
+                                    cout << "chipnr should be in range [0,7]" << endl;
+                            }
+                                                        
+                        }
+
+
+                        else {
 
                         // chip 0 U goett
                         //"adjust" : [ 1, 93, 16, 97, 16, 98, 16, 99, 16, 100, 16, 101, 16, 116, 1, 117, 1 ]
@@ -428,7 +492,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
 
                         if (chipnr==0) {
 
-                            int tmp = dcol/2;
+                            
                             //// if (tmp>=97 && tmp<=101) { // M4I subpixel electron   
                             //if (tmp==93 || (tmp>=97 && tmp<=101) ) {
                                 // if (tmp>=97 && tmp<=102) { // ORNL
@@ -436,7 +500,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
 			    //if (tmp>=97 && tmp<=101) { // QCAM
   
                             //    CToA-=16;
-                            if (tmp>=97 && tmp<=102) { // SW test
+                            if (tmp==87 || tmp==91 || tmp==93 || (tmp>=97 && tmp<=103)) { // SW test
   
                                 CToA-=16;
 				//ToT = ToT + 1;											 
@@ -446,26 +510,26 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                         //"adjust" : [ 1, 97, 16, 98, 16, 99, 16, 100, 16, 101, 16 ]
                     
                         if (chipnr==1) {
-                            int tmp = dcol/2;
+                            
                             //// if ((tmp>=97 && tmp<=102) || tmp==93)  { // M4I subpixel electron
                             
                             // "adjust" : [ 1, 9, 9, 26, 9, 92, -16, 93, -16, 95, -16, 97, -16, 98, -16, 99, -16, 100, -16, 101, -16, 102, -16 ]  //QCAM
-                            if ( tmp==92 || tmp==93 || tmp==93 || tmp==95 || (tmp>=97 && tmp<=102) )  { //QCAM   
-                                //// CToA-=16;
+                            if ( tmp==91 || tmp==93 || (tmp>=96 && tmp<=101) )  { //QCAM   
+                                CToA-=16;
                             }
                         }
                     
                         // "adjust" : [ 1, 97, 16, 98, 16, 99, 16, 100, 16, 101, 16, 102, 16 ]
                     
                         if (chipnr==2) {
-                            int tmp = dcol/2;
+                           
                             //// if (tmp>=97 && tmp<=101)  { // M4I subpixel electron
                             //if (tmp==93 || (tmp>=97 && tmp<=101))  {  // ORNL
                             // if (tmp>=97 && tmp<=101)  {  // GoNDT 1
                             // "adjust" : [ 1, 16, 9, 25, 9, 26, 9, 32, 9, 43, 9, 73, 9, 76, 9, 79, 9, 80, 9, 87, -16, 89, 9, 91, -16, 92, 9, 93, -16, 97, -16, 98, -16, 99, -16, 100, -16, 101, -16, 102, -16, 105, 9, 110, 9, 120, 9, 121, 9, 122, 9, 123, 9, 124, 9, 125, 9, 126, 9, 127, 9 ] // QCAM 
-                            if (tmp==87 || tmp==91 || tmp==93 || (tmp>=97 && tmp<=102) ) { // QCAM 
+                            if (tmp==87 || tmp==91 || tmp==93 || (tmp>=95 && tmp<=103) || tmp==114) { // QCAM 
                              
-                                //// CToA-=16;
+                                CToA-=16;
                             }
                         }
                      
@@ -473,13 +537,42 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                    
                    
                         if (chipnr==3) {
-                            int tmp = dcol/2;
+                            
                             //// if (tmp>=97 && tmp<=101)  { // M4I subpixel electron
                             //  "adjust" : [ 1, 87, -16, 91, -16, 93, -16, 97, -16, 98, -16, 99, -16, 100, -16, 101, -16, 103, -16 ] // QCAM 
-                            if (tmp==87 || tmp==91 || tmp==93 || (tmp>=97 && tmp<=103) )  { // QCAM 
-                                //// CToA-=16;
+                            if (tmp==87 || tmp==93 || (tmp>=96 && tmp<=103) )  { // QCAM 
+                                CToA-=16;
                             }
                         } 
+                        if (chipnr==4) {
+                           
+                            if (tmp==93 || (tmp>=97 && tmp<=102) )  {
+                                CToA-=16;
+                            }
+                        }
+                        if (chipnr==5) {
+                            
+                            if (tmp==87 || tmp==91 || tmp==93 ||  (tmp>=95 && tmp<=102) )  {
+                                CToA-=16;
+                            }
+                        } 
+                        if (chipnr==6) {
+                           
+                            if (tmp==87 || tmp==91 || tmp==93 ||  (tmp>=95 && tmp<=103) || tmp==114 )  {
+                                CToA-=16;
+                            }
+                        } 
+                        if (chipnr==7) {
+                           
+                            if (tmp==87 || tmp==91 || tmp==93 ||  (tmp>=96 && tmp<=102) )  {
+                                CToA-=16;
+                            }
+                        } 
+
+                        }
+
+
+
                     }
                     
                     GToA = ((Long_t(spidrTime)) << 18 ) + Long_t(CToA);
@@ -549,33 +642,52 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     if (chipnr==3) {
                         xpix=x;
                         ypix=y;
-                    } 
-
+                    }
+                    bool cb_fr_2by4 = true;
+                    if (cb_fr_2by4) {
                     if (chipnr==4) {
-                        //xpix=x+260;
-                        xpix=767-x+nInterPix;
+                        xpix=512+x+2*nInterPix;
+                        //ypix=511+nInterPix-y;
+                        ypix=y; 
+                    }
+                    if (chipnr==5) {
+                        //xpix=512+2*nInterPix+x;
+                        xpix=1023+3*nInterPix-y;
+                        //ypix=y;
+                        ypix=x;
+                    }
+                    if (chipnr==6) {
+                        xpix=767+2*nInterPix-x;
+                        //ypix=y; 
+                        ypix=511+nInterPix-y;
+                    }
+                    if (chipnr==7) {
+                        xpix=1023+3*nInterPix-y;
+                        ypix=256+nInterPix+x;
+                    }
+
+                    }
+                    else {
+                    if (chipnr==4) {
+                        xpix=767-x+2*nInterPix;
                         ypix=511+nInterPix-y; 
                     }
                     if (chipnr==5) {
-                        //xpix=255-x+260;
-                        //ypix=255-y+260;
-                        xpix=512+nInterPix+x;
+                        xpix=512+2*nInterPix+x;
                         ypix=y;
                     }
                     if (chipnr==6) {
-                        xpix=768+2*nInterPix+x;
-                        //ypix=255-y+260;
+                        xpix=768+3*nInterPix+x;
                         ypix=y;
                     }
                     if (chipnr==7) {
-                        xpix=1023+2*nInterPix-x;
+                        xpix=1023+3*nInterPix-x;
                         ypix=511+nInterPix-y;
+                    }
                     }
 
 
-                     if ((xpix==254 && ypix==245) || (xpix==342 && ypix==143) ) continue; 
-                     
-                    
+                                        
                     //h2quad->Fill(xpix,ypix);
                     
                     t2->Fill();
