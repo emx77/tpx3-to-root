@@ -81,8 +81,15 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
     ULong64_t heartbeat;
     ULong64_t last_hb;  
 
+    ULong64_t GToA;  
+
     ULong64_t last_heartbeat_top = 0;   
     ULong64_t last_heartbeat_bottom = 0;
+
+
+   
+    ULong64_t last_sr = 0;   
+    ULong64_t last_sf = 0; 
       
 
     TTree *t2 = new TTree("t2",""); 
@@ -92,6 +99,7 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
     t2->Branch("ypix",&Row,"ypix/s");
     t2->Branch("ToT",&ToT,"ToT/s");
     t2->Branch("ToA",&ToA,"ToA/s");
+    t2->Branch("GToA",&GToA,"GToA/L");
     t2->Branch("Pilepup",&Pileup,"Pileup/b");
     t2->Branch("fToA_rise",&fToA_rise,"fToA_rise/b");
     t2->Branch("fToA_fall",&fToA_fall,"fToA_fall/b");
@@ -150,9 +158,23 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
                 infi.read((Char_t*)data_packet, dpl); 
                 i++; 
                 g = infi.tellg();
+
+                // cout << g-8 << ' ' ;
+
+                buffer = (Char_t*) data_packet;
+                TString s((Char_t*)buffer); 
+                if (s.Contains("TPX4")) {
+                    // cout << "pos=" << dec << g-8 << ' ' << hex << *data_packet << dec << ' ' << s << endl;; 
+                    // cout << "TPX4" << endl;
+                    ntpx4markers++;
+                    continue;
+                } 
+
                 UInt_t eoc = ((*data_packet)>>55) & 0xFF;
                 top=(*data_packet>>63)&0x1;
                 //if (top) { continue; }
+
+                //cout << g-8 << ' ' << (int) top << ' ' << eoc << ' '; 
 
                 h1->Fill(eoc);
 
@@ -160,26 +182,32 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
                     ntimestamps++;
                     hb_packet = *data_packet;
                     heartbeat = (*data_packet & 0xFFFFFFFFFFFF);
-                    cout << ntimestamps << ' ' << (int)top << ' ' << heartbeat << ' ' << heartbeat*25e-9 <<  endl;
+                    // cout << "pos = " << g-8 << ' ' << ntimestamps << ' ' << (int)top << ' ' << heartbeat << ' ' << heartbeat*25e-9 <<  endl;
+                    // cout << "hb:" << heartbeat*25e-9 << endl;
                     if (top) last_heartbeat_top = heartbeat;
                     else last_heartbeat_bottom = heartbeat; 
                     h1hb->Fill(heartbeat*25e-9);
                     hb->Fill(); 
                     continue;  
-                }
-        
-                buffer = (Char_t*) data_packet;
-                TString s((Char_t*)buffer); 
-                //cout << dec << g << ' ' << s << '-' << s.SubString(0,8) << endl;
-         
-                if (s.Contains("TPX4")) {
-                    ntpx4markers++;
-                    continue;
-                } 
+                }  
+                  
 
                 // there are additional packets with high eoc values;
                 if (eoc>223) {
-                    cout << (int)top << " eoc:" << eoc << ' ' << *data_packet << ' ' << (((*data_packet)>>52) & 0x7) << ' ' << ((*data_packet) &0x7ffffffffffff) << endl; 
+                    // 
+                    if (eoc==225) {           
+                        cout << eoc << ' ' << (int)top << " S_R:" << (*data_packet & 0xFFFFFFFFFFFF)*25e-9 << ' ' << heartbeat*25e-9 << endl; 
+                        last_sr = (*data_packet & 0xFFFFFFFFFFFF);
+                    }   
+                    else if (eoc==226) { 
+                        cout << eoc << ' ' << (int) top <<" S_F:" << (*data_packet & 0xFFFFFFFFFFFF)*25e-9 << ' ' << heartbeat*25e-9 << endl;
+                        last_sf = (*data_packet & 0xFFFFFFFFFFFF);
+                    }  
+
+                    else {
+                        cout << g-8 << (int)top << " eoc:" << eoc << ' ' << *data_packet << ' ' << (((*data_packet)>>52) & 0x7) << ' ' << ((*data_packet) &0x7ffffffffffff) << endl; 
+                    }
+
                     continue;
                 } 
                 // 
@@ -257,7 +285,7 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
                         break;
                     } 
                     j++;
-                    if (j==8) cout << " wrong ufToA_start value: " << ufToA_start << endl; 
+                    // if (j==8) cout << " wrong ufToA_start value: " << ufToA_start << endl; 
                 } 
                 j=0;
                 while (j<8) {
@@ -266,14 +294,33 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
                         break;
                     } 
                     j++;
-                    if (j==8) cout << " wrong ufToA_stop value: " << ufToA_stop << endl; 
+                    // if (j==8) cout << " wrong ufToA_stop value: " << ufToA_stop << endl; 
                 } 
 
                 if (top) last_hb = last_heartbeat_top; 
                 else last_hb = last_heartbeat_bottom;  
-                
 
-                cout << "pixelhit: top " << (int) top << " last hb: "  << last_hb << " ToA "  << ToA << ' ' << endl;  
+
+                GToA = ( 65536 * (last_hb >> 16) + (ToA) );  
+            
+                // cout  << ' ' << last_heartbeat_bottom << ' ' << last_heartbeat_top << ' ' << last_sr *25e-9 << ' ' << last_sf *25e-9<< endl;
+                // cout << g-8 << ' ' << "pixelhit: top " << (int) top << ' ' << heartbeat << " last hb: "   << ' ' << last_hb << ' ' <<  last_hb*25e-9 <<  " ToA "  << ToA << " GToA "  <<  GToA << ' ' <<  GToA*25e-9 << ' ' <<  Col << ' ' << Row << endl;  
+
+
+                
+  
+
+                // GToA 
+
+                //static long toa(long pixdata, long stamp) {
+		//long t = Tpx4PixelData.getTOA(pixdata);
+		//long hb = stamp & Tpx4PixelData.TIME_STAMP_MASK;
+		//long delta = (t - hb) & 0xffff;
+		//delta = (delta ^ 0x8000) - 0x8000;      // sign extend
+		//return hb + delta;
+	        //}
+
+              
 
                 // UInt_t ratio_VCO_CKDLL=16;
 
