@@ -43,12 +43,12 @@ int tpx3_clusters(string filename, long nhits=-1) {
    ttdc->SetEstimate(-1);
    //ttdc->Draw("ts","type==0||type==2","goff");
    // select rising edge TDCs, from TDC chan0, ignoring chip nr for now
-   ttdc->Draw("ts","chipnr==0","goff");
+   ttdc->Draw("ts","chipnr==0&&type==0","goff");
    tdc = ttdc->GetV1();
    if (ntrig>1) {
      cout << tdc[0] << ' ' << endl;
-     // cout << tdc[1] << ' ' << endl;
-     // cout << tdc[2] << ' ' << endl;
+     cout << tdc[1] << ' ' << endl;
+     cout << tdc[2] << ' ' << endl;
    }  
    
    const Int_t kMaxPixel=5000; // maximum allowed cluster size
@@ -90,6 +90,8 @@ int tpx3_clusters(string filename, long nhits=-1) {
 
    long nprocessed = 0;
 
+   // int nskip = 70000000;
+
    if (nhits<0 || nhits>nentries) nhits = nentries;
    cout << "number of hits to process: " << nhits << endl;
    
@@ -101,6 +103,11 @@ int tpx3_clusters(string filename, long nhits=-1) {
      // cout << "selecting tree data ... " << endl;
      int nsubset = t2->Draw("ypix:xpix:GToA:ToT", "","goff", stepsize, nprocessed);
      nprocessed+=nsubset;
+     //if (nprocessed < nskip) {
+     //  cout << " skip " << endl;
+     //  continue;  
+     //}
+      
      // cout << "number of entries in subset: " << nsubset << ' ' << istep << endl;
      
      //long nentries=t2->GetEntries();

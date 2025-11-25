@@ -358,9 +358,9 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                       // ro_tdc_count=0;  			
                       tdc_ts = tdc_time+(ro_tdc_count)*maxTDC;
 
-                      if (hitcount>0) {                       
+                      //if (hitcount>0) {                       
                         ttdc->Fill();
-                      }
+                      //}
                     } // good tdcfine
                 }
                 if (h2==0x4) { 
@@ -418,7 +418,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     CToA = (Int_t) (ToA << 4) - FToA;
                     
                     // ToA shift example, can differ from system to system
-                    bool corr_toa_shift = true; // false in old data without the T0 reset
+                    bool corr_toa_shift = false; // false in old data without the T0 reset
                     if (corr_toa_shift) {
                       
                         int tmp = dcol/2;
@@ -689,8 +689,9 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
 
                                         
                     //h2quad->Fill(xpix,ypix);
-                    
+                    //if (tdc_time>0) {
                     t2->Fill();
+                    //}
                       
                 } // ==> if packet is a pixelhit
                 
