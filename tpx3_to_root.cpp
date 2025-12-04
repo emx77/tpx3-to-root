@@ -191,6 +191,8 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                 cout << size << " data size > " << dl << endl;
                 break;
             }
+
+            cout << count << ' ' << (int)chipnr << ' ' << mode << ' ' << size << ' ' << endl;
             
             infi.read((char*)databuffer,size);
 
@@ -207,6 +209,8 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
             // int tmp_min=100000;
             int npixhits=0;
             
+
+            
 	    	
 
             for (int i=0; i<pixdatasize; i++) {
@@ -218,7 +222,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                 //if (spidrTime>tmp_max) tmp_max=spidrTime;
                 //if (spidrTime<tmp_min) tmp_min=spidrTime;
                
-                //cout << hex << (temp>>56) << dec << ' ';
+                cout << "    " << i << ' ' << hex << (temp>>56) << dec << ' ' << endl;
 
                 int h4 = temp>>48; 
                 
