@@ -192,7 +192,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                 break;
             }
 
-            cout << count << ' ' << (int)chipnr << ' ' << mode << ' ' << size << ' ' << endl;
+            // cout << count << ' ' << (int)chipnr << ' ' << mode << ' ' << size << ' ' << endl;
             
             infi.read((char*)databuffer,size);
 
@@ -222,7 +222,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                 //if (spidrTime>tmp_max) tmp_max=spidrTime;
                 //if (spidrTime<tmp_min) tmp_min=spidrTime;
                
-                cout << "    " << i << ' ' << hex << (temp>>56) << dec << ' ' << endl;
+                // cout << "    " << i << ' ' << hex << (temp>>56) << dec << ' ' << endl;
 
                 int h4 = temp>>48; 
                 
@@ -237,6 +237,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                 if (hdr==0x50) {
                     // packet counter
                     if (debug) cout << (int) chipnr << " 50 packet count "  << (temp & 0xffffffffffff) << endl;
+                    cout << (int) chipnr << " 0x50 packet ID "  << (temp & 0xffffffffffff) << ' ' << pixdatasize << endl; 
                 }
 
                 if (hdr==0x5c) {
@@ -427,7 +428,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                       
                         int tmp = dcol/2;
 
-                        bool fr2x4 = true;
+                        bool fr2x4 = false;
     
     /*  Affected double columns for chip 0: [87, 91, 93, 96, 97, 98, 99, 100, 101, 102, 103]
     Affected double columns for chip 1: [87, 91, 93, 96, 97, 98, 99, 100, 101, 102, 103, 114]
