@@ -91,6 +91,13 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
     ttdc->Branch("ts",&tdc_ts,"ts/D");
     ttdc->Branch("type",&tdc_type,"type/b");
     ttdc->Branch("nr",&tdc_nr,"nr/i"); 
+
+    UInt_t pack_id, pack_size;
+
+    TTree *tpks = new TTree("tpks","");
+    tpks->Branch("chipnr",&chipnr,"chipnr/b"); 
+    tpks->Branch("id",&pack_id,"id/i");
+    tpks->Branch("size",&pack_size,"size/i");
      
     const int hl=8; // length of header packet
     UChar_t *buffer = new UChar_t[hl];   
@@ -238,6 +245,9 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
                     // packet counter
                     if (debug) cout << (int) chipnr << " 50 packet count "  << (temp & 0xffffffffffff) << endl;
                     cout << (int) chipnr << " 0x50 packet ID "  << (temp & 0xffffffffffff) << ' ' << pixdatasize << endl; 
+                    pack_id = temp & 0xffffffffffff;
+                    pack_size = pixdatasize;
+                    tpks->Fill();
                 }
 
                 if (hdr==0x5c) {
@@ -731,6 +741,7 @@ int tpx3_to_root(string filename, unsigned long nrawpixelhits=0) {
 
     t2->Write();
     ttdc->Write();
+    tpks->Write();
     f->Close();
 
     delete h1;
