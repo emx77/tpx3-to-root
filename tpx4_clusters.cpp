@@ -12,11 +12,11 @@
 int clfind(int ihit, int clusid, int nsubset,
 	   double *x, double *y, double *t, int *clusnr);
 
-//double t0find(Long64_t ntdc, double *tdc_time, double pixelhit_time);
+double t0find(Long64_t ntdc, double *tdc_time, double pixelhit_time);
 
 using namespace std;
 
-//Long64_t i_tdc=0;
+Long64_t i_tdc=0;
 
 int tpx4_clusters(string filename, long nhits=-1) {
 
@@ -50,6 +50,22 @@ int tpx4_clusters(string filename, long nhits=-1) {
  //  tdc = ttdc->GetV1();
  //  if (ntrig>0) cout << tdc[0] << ' ' << endl;
    
+   // digital pixels  
+   t2->SetEstimate(-1);
+   Long64_t ntrig = t2->Draw("GToA*25e-9", "xpix==2&&ypix==511","goff");
+   cout << "Number of digital pixel entries: " << ntrig << endl; 
+   double tdc[ntrig];
+   for (int i=0; i<ntrig; i++) {
+     tdc[i] = t2->GetV1()[i];
+    }
+     tdc[0] = 0;
+   if (ntrig>0) cout << tdc[0] << ' ' << endl;
+   if (ntrig>1) cout << tdc[1] << ' ' << endl;
+   if (ntrig>2) cout << tdc[2] << ' ' << endl;
+    if (ntrig>2) cout << tdc[ntrig-1] << ' ' << endl;
+
+   
+
    const Int_t kMaxPixel=5000; // maximum allowed cluster size
    Int_t npix;
    Short_t xpix[kMaxPixel];
@@ -61,7 +77,7 @@ int tpx4_clusters(string filename, long nhits=-1) {
    //Int_t etot;
    //Int_t dtpix[kMaxPixel];
    //Int_t tmin;
-  // Double_t tof[kMaxPixel];
+   Double_t tof[kMaxPixel];
    
    TFile *clFile = new TFile(ofile.c_str(),"recreate");
    TTree *tcl = new TTree("tcl","Cluster data tree");
@@ -70,7 +86,7 @@ int tpx4_clusters(string filename, long nhits=-1) {
    tcl->Branch("y",ypix,"y[n]/S");
    tcl->Branch("t",tpix,"t[n]/L");
    tcl->Branch("e",epix,"e[n]/S");
-   // tcl->Branch("tof",tof,"tof[n]/D");
+   tcl->Branch("tof",tof,"tof[n]/D");
    //tcl->Branch("mx",&mx,"mx/F");
    //tcl->Branch("my",&my,"my/F");
    //tcl->Branch("etot",&etot,"etot/I");
@@ -95,7 +111,7 @@ int tpx4_clusters(string filename, long nhits=-1) {
        stepsize = nhits-nprocessed;
      }
      // cout << "selecting tree data ... " << endl;
-     int nsubset = t2->Draw("ypix:xpix:GToA:ToT", "","goff", stepsize, nprocessed);
+     int nsubset = t2->Draw("ypix:xpix:GToA:ToT", "!(xpix==2&&ypix==511)","goff", stepsize, nprocessed);
      nprocessed+=nsubset;
      // cout << "number of entries in subset: " << nsubset << ' ' << istep << endl;
      
@@ -159,12 +175,12 @@ int tpx4_clusters(string filename, long nhits=-1) {
 	   //mx+=xpix[npix];
 	   //my+=ypix[npix];
 	   //etot+=epix[npix];
-           // if (ntrig>0) {
-                // calculate ToF only when TDC timestamps are available
-               //  tof[npix] = (Double_t) (t[j]*1.5625E-9 - t0find(ntrig, tdc, t[j]*1.5625E-9) ) ;
-                //cout << setprecision(15) <<  tof[npix] << ' ' << t[j]*1.5625E-9 << ' ' << xpix[npix] << ' ' << ypix[npix] << endl; 
-           // }
-                npix++;
+            if (ntrig>0) {
+              // calculate ToF only when TDC timestamps are available
+              tof[npix] = (Double_t) (t[j]*25E-9 - t0find(ntrig, tdc, t[j]*25E-9) ) ;
+              // cout <<  tof[npix] << ' ' << t[j]*25E-9 << ' ' << xpix[npix] << ' ' << ypix[npix] << endl; 
+            }
+            npix++;
             
         }
        }
@@ -212,12 +228,16 @@ int clfind(int ihit, int clusid, int nsubset,
   return 0;
 }
 
-/*
+
 double t0find(Long64_t ntdc, double *tdc_time, double pixelhit_time) {
+    //cout << ntdc << ' ' << pixelhit_time << ' ' << i_tdc << ' ' << tdc_time[i_tdc];
+    // cout << pixelhit_time << ' ';
+    
     // Long64_t i=0;
     // Find a tdc time stamp later then the pixel hit
-    while (i_tdc<ntdc) {
+    while (i_tdc<ntdc) {  
       if (pixelhit_time<tdc_time[i_tdc]) {
+          // cout << " < " << tdc_time[i_tdc] << ' ';
           break;
       }
       i_tdc++;
@@ -226,8 +246,9 @@ double t0find(Long64_t ntdc, double *tdc_time, double pixelhit_time) {
     // and the pixelhits are not sorted in time;
     // Check if previous TDC time stamps are still later than the 
     // pixelhit.
-    while (i_tdc>=0) {
+    while (i_tdc>=1) {
       if (pixelhit_time<tdc_time[i_tdc]) {
+          // cout << " c " << tdc_time[i_tdc] << ' ';
           i_tdc--;
       }
       else {
@@ -235,7 +256,7 @@ double t0find(Long64_t ntdc, double *tdc_time, double pixelhit_time) {
       }
     }
     // i_tdc--;
-    // cout << setprecision(15)  << tdc_time[i_tdc] << ' '; 
+    // cout << ' ' << i_tdc << endl; 
     return tdc_time[i_tdc];
 };
-*/
+

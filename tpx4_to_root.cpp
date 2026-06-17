@@ -9,6 +9,8 @@
 #include "TFile.h"
 #include "TTree.h"
 
+Long_t getGToA(Long_t toa,  Long_t hb);
+
 using namespace std;
 
 int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
@@ -301,8 +303,8 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
                 else last_hb = last_heartbeat_bottom;  
 
 
-                GToA = ( 65536 * (last_hb >> 16) + (ToA) );  
-            
+                // GToA = ( 65536 * (last_hb >> 16) + (ToA) );  
+                GToA = ULong_t(getGToA(ToA,last_hb));
                 // cout  << ' ' << last_heartbeat_bottom << ' ' << last_heartbeat_top << ' ' << last_sr *25e-9 << ' ' << last_sf *25e-9<< endl;
                 // cout << g-8 << ' ' << "pixelhit: top " << (int) top << ' ' << heartbeat << " last hb: "   << ' ' << last_hb << ' ' <<  last_hb*25e-9 <<  " ToA "  << ToA << " GToA "  <<  GToA << ' ' <<  GToA*25e-9 << ' ' <<  Col << ' ' << Row << endl;  
 
@@ -320,6 +322,25 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
 		//return hb + delta;
 	        //}
 
+            /* public static long getTOA(long pixdata, long hb) {
+		long toa = getTOA(pixdata);
+
+		if (hb != 0) {
+			long hblo = hb & 0xFFFF;
+			long extToa = (hb & ~0xFFFFl) | toa;
+
+//			if (hblo < 0x8000 && toa > hblo + 0x8000) // Not sure if a pixel packet can be earlier than a heartbeat...
+//				extToa -= 0x10000;
+//			else
+				if (hblo > 0x8000 && toa + 0x8000 < hblo)
+				extToa += 0x10000;
+
+			toa = extToa;
+		}
+		return toa;
+    
+        */
+            
               
 
                 // UInt_t ratio_VCO_CKDLL=16;
@@ -382,3 +403,49 @@ int tpx4_to_root(string filename, unsigned long nrawpixelhits=0) {
     return 0;
 }
 
+
+/*
+ public static long getTOA(long pixdata, long hb) {
+		long toa = getTOA(pixdata);
+
+		if (hb != 0) {
+			long hblo = hb & 0xFFFF;
+			long extToa = (hb & ~0xFFFFl) | toa;
+
+//			if (hblo < 0x8000 && toa > hblo + 0x8000) // Not sure if a pixel packet can be earlier than a heartbeat...
+//				extToa -= 0x10000;
+//			else
+				if (hblo > 0x8000 && toa + 0x8000 < hblo)
+				extToa += 0x10000;
+
+			toa = extToa;
+		}
+		return toa;
+    
+        
+
+*/
+
+
+Long_t getGToA(Long_t toa,  Long_t hb) {
+    
+    //cout << ' ' << toa << ' ' << hb << ' ' ;
+    Long_t hblo =  hb & 0xFFFF; 
+    Long_t extToa = (hb & ~0xFFFFl) | toa;
+
+    //cout << ' ' << hblo << ' ' << extToa << ' ' ;
+
+    if (hblo < 0x8000 && toa > hblo + 0x8000){// Not sure if a pixel packet can be earlier than a heartbeat...
+				extToa -= 0x10000;
+                // cout << '-' << extToa;
+                } 			
+    else if (hblo > 0x8000 && toa + 0x8000 < hblo) {
+        extToa += 0x10000;
+         //cout << '+' << extToa;
+         }
+    toa = extToa;
+
+    
+    //cout << endl;
+    return toa;
+}
